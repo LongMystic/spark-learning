@@ -9,21 +9,23 @@ Instructions:
 4. Reduce shuffle data size
 """
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum, count
+import os
+import sys
 import time
 
-spark = SparkSession.builder \
-    .appName("Shuffle Optimization Exercise") \
-    .getOrCreate()
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table
+
+from pyspark.sql.functions import col, sum as spark_sum, count
+
+spark = get_spark("Shuffle Optimization Exercise")
 
 # Exercise 1: Measure Shuffle Size
 print("=" * 50)
 print("Exercise 1: Measure Shuffle Size")
 print("=" * 50)
 
-# TODO: Replace with your actual table path
-df = spark.read.parquet("your_table_path/")
+df = read_table(spark, "transactions")
 
 print("Running query with shuffle (groupBy)...")
 print("  Check Spark UI - Stages tab for shuffle metrics")
@@ -82,7 +84,7 @@ print("=" * 50)
 # Bad: Shuffle all columns
 print("--- Without Column Pruning ---")
 start = time.time()
-result_bad = df.join(df, "id")  # Shuffles all columns
+result_bad = df.join(df, "customer_id")  # Shuffles all columns
 # result_bad.count()  # Uncomment to execute
 time_bad = time.time() - start
 print(f"  Execution time: {time_bad:.2f}s")
@@ -90,8 +92,8 @@ print(f"  Execution time: {time_bad:.2f}s")
 # Good: Only shuffle needed columns
 print("\n--- With Column Pruning ---")
 start = time.time()
-result_good = df.select("id", "category", "amount").join(
-    df.select("id", "status"), "id"
+result_good = df.select("customer_id", "category", "amount").join(
+    df.select("customer_id", "status"), "customer_id"
 )  # Only shuffles selected columns
 # result_good.count()  # Uncomment to execute
 time_good = time.time() - start
@@ -108,7 +110,7 @@ print("=" * 50)
 # Bad: Filter after join
 print("--- Filter After Join ---")
 start = time.time()
-result_bad = df.join(df, "id").filter(col("status") == "active")
+result_bad = df.join(df, "customer_id").filter(col("status") == "active")
 # result_bad.count()  # Uncomment to execute
 time_bad = time.time() - start
 print(f"  Execution time: {time_bad:.2f}s")
@@ -117,9 +119,8 @@ print("  Shuffles all data, then filters")
 # Good: Filter before join
 print("\n--- Filter Before Join ---")
 start = time.time()
-result_good = df.filter(col("status") == "active").join(
-    df.filter(col("status") == "active"), "id"
-)
+_left = df.filter(col("status") == "active")
+result_good = _left.join(_left.select("customer_id"), "customer_id")
 # result_good.count()  # Uncomment to execute
 time_good = time.time() - start
 print(f"  Execution time: {time_good:.2f}s")

@@ -61,11 +61,14 @@ Master Spark integration with Apache Iceberg for advanced table management and o
 - File compaction
 - Metadata management
 
-## 📖 Learning Path
+## 📖 Learning Path (Phase 5)
 
-Start with Iceberg fundamentals, then learn integration patterns and optimization techniques.
+- [Day 33: Iceberg Fundamentals & Read/Write](day-33-iceberg-fundamentals.md)
+- [Day 34: Iceberg Maintenance — Compaction, Snapshots, Time Travel, MERGE](day-34-iceberg-maintenance.md)
+
+Exercises: [`exercises/production/`](../exercises/production/) (run with `ENABLE_ICEBERG=1`)
 
 ---
 
-**Next**: [Iceberg Fundamentals with Spark](day-33-iceberg-fundamentals.md)
+**Start**: [Day 33: Iceberg Fundamentals](day-33-iceberg-fundamentals.md)
 

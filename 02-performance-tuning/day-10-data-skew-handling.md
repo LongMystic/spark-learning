@@ -484,5 +484,5 @@ df_skewed.repartition(100, "key")
 
 ---
 
-**Progress**: Day 10/30+ ✅
+**Progress**: Day 10/40 ✅
 

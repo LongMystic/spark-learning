@@ -10,41 +10,42 @@ Instructions:
 5. Identify shuffle operations
 """
 
-from pyspark.sql import SparkSession
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table
+
 from pyspark.sql.functions import col, sum as spark_sum, count
 
-# Initialize Spark Session
-spark = SparkSession.builder \
-    .appName("DAG Analysis Exercise") \
-    .getOrCreate()
+# Initialize Spark Session (local[*] by default; set SPARK_MASTER for a cluster)
+spark = get_spark("DAG Analysis Exercise")
 
 # Exercise 1: Simple transformation (should create 1 stage)
 print("=" * 50)
 print("Exercise 1: Simple Filter and Select")
 print("=" * 50)
 
-# TODO: Replace with your actual table path
-df = spark.read.parquet("your_table_path/")
+df = read_table(spark, "transactions")
 
-result1 = df.filter(col("some_column") > 100).select("col1", "col2")
+result1 = df.filter(col("amount") > 100).select("customer_id", "amount")
 
 # View the execution plan
 print("\nExecution Plan:")
 result1.explain(extended=True)
 
 # Trigger execution and check Spark UI
-# result1.count()  # Uncomment to execute
+print("count:", result1.count())
 
 # Exercise 2: Join operation (should create multiple stages)
 print("\n" + "=" * 50)
 print("Exercise 2: Join Operation")
 print("=" * 50)
 
-# TODO: Replace with your actual table paths
-df1 = spark.read.parquet("table1_path/")
-df2 = spark.read.parquet("table2_path/")
+df1 = read_table(spark, "transactions")
+df2 = read_table(spark, "customers")
 
-result2 = df1.join(df2, "id").filter(col("status") == "active")
+result2 = df1.join(df2, "customer_id").filter(col("status") == "active")
 
 print("\nExecution Plan:")
 result2.explain(extended=True)
@@ -66,7 +67,7 @@ print("\nExecution Plan:")
 result3.explain(extended=True)
 
 # Trigger execution and check Spark UI
-# result3.show()  # Uncomment to execute
+result3.show(10)
 
 # Exercise 4: Complex query (multiple stages)
 print("\n" + "=" * 50)

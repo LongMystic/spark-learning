@@ -1,0 +1,8 @@
+# Core — everything runs on just this.
+pyspark==3.5.1
+
+# Optional helpers (nice to have, not required by the exercises):
+pyarrow>=14.0        # Arrow / Pandas UDFs (Days 24, 32)
+pandas>=2.0          # Pandas UDFs and quick local inspection
+kafka-python>=2.0    # produce_stream.py helper for Structured Streaming (Days 30-31)
+jupyterlab>=4.0      # optional: run lessons as notebooks

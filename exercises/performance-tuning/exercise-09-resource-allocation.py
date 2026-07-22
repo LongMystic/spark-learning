@@ -8,29 +8,37 @@ Instructions:
 3. Compare resource utilization patterns
 """
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum
+import os
+import sys
 import time
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table
+
+from pyspark.sql.functions import col, sum as spark_sum
+
+# NOTE: allocation settings (executor.instances, dynamicAllocation.*, yarn.queue)
+# only take effect at submit time on a YARN cluster. Locally we just SET and PRINT
+# them so you can see exactly what you'd pass to spark-submit. `show()` reads a
+# conf back with a friendly default when it isn't applicable locally.
+spark = get_spark("Resource Allocation Exercise")
+
+
+def show(key):
+    return spark.conf.get(key, "(cluster-only)")
+
 
 # Exercise 1: Static Allocation
 print("=" * 50)
 print("Exercise 1: Static Allocation")
 print("=" * 50)
 
-spark_static = SparkSession.builder \
-    .appName("Static Allocation Exercise") \
-    .config("spark.dynamicAllocation.enabled", "false") \
-    .config("spark.executor.instances", "10") \
-    .config("spark.executor.memory", "8g") \
-    .config("spark.executor.cores", "4") \
-    .getOrCreate()
+spark.conf.set("spark.executor.instances", "10")
+print("Static Allocation Configuration (submit-time on YARN):")
+print("  spark.dynamicAllocation.enabled = false")
+print(f"  spark.executor.instances = {show('spark.executor.instances')}")
 
-print("Static Allocation Configuration:")
-print(f"  Dynamic Allocation: {spark_static.conf.get('spark.dynamicAllocation.enabled')}")
-print(f"  Executor Instances: {spark_static.conf.get('spark.executor.instances')}")
-
-# TODO: Replace with your actual table path
-df = spark_static.read.parquet("your_table_path/")
+df = read_table(spark, "transactions")
 
 print("\nRunning query with static allocation...")
 start = time.time()
@@ -44,26 +52,25 @@ print("\n" + "=" * 50)
 print("Exercise 2: Dynamic Allocation")
 print("=" * 50)
 
-spark_dynamic = SparkSession.builder \
-    .appName("Dynamic Allocation Exercise") \
-    .config("spark.dynamicAllocation.enabled", "true") \
-    .config("spark.dynamicAllocation.minExecutors", "5") \
-    .config("spark.dynamicAllocation.maxExecutors", "30") \
-    .config("spark.dynamicAllocation.initialExecutors", "10") \
-    .config("spark.dynamicAllocation.executorIdleTimeout", "60s") \
-    .config("spark.dynamicAllocation.cachedExecutorIdleTimeout", "infinity") \
-    .config("spark.dynamicAllocation.schedulerBacklogTimeout", "1s") \
-    .config("spark.executor.memory", "8g") \
-    .config("spark.executor.cores", "4") \
-    .getOrCreate()
+dynamic_conf = {
+    "spark.dynamicAllocation.enabled": "true",
+    "spark.dynamicAllocation.minExecutors": "5",
+    "spark.dynamicAllocation.maxExecutors": "30",
+    "spark.dynamicAllocation.initialExecutors": "10",
+    "spark.dynamicAllocation.executorIdleTimeout": "60s",
+    "spark.dynamicAllocation.cachedExecutorIdleTimeout": "infinity",
+    "spark.dynamicAllocation.schedulerBacklogTimeout": "1s",
+}
+for k, v in dynamic_conf.items():
+    spark.conf.set(k, v)
 
-print("Dynamic Allocation Configuration:")
-print(f"  Dynamic Allocation: {spark_dynamic.conf.get('spark.dynamicAllocation.enabled')}")
-print(f"  Min Executors: {spark_dynamic.conf.get('spark.dynamicAllocation.minExecutors')}")
-print(f"  Max Executors: {spark_dynamic.conf.get('spark.dynamicAllocation.maxExecutors')}")
-print(f"  Initial Executors: {spark_dynamic.conf.get('spark.dynamicAllocation.initialExecutors')}")
+print("Dynamic Allocation Configuration (submit-time on YARN):")
+print(f"  Dynamic Allocation: {show('spark.dynamicAllocation.enabled')}")
+print(f"  Min Executors: {show('spark.dynamicAllocation.minExecutors')}")
+print(f"  Max Executors: {show('spark.dynamicAllocation.maxExecutors')}")
+print(f"  Initial Executors: {show('spark.dynamicAllocation.initialExecutors')}")
 
-df2 = spark_dynamic.read.parquet("your_table_path/")
+df2 = read_table(spark, "transactions")
 
 print("\nRunning query with dynamic allocation...")
 print("  Monitor Spark UI to see executor scaling...")
@@ -100,27 +107,11 @@ print("=" * 50)
 
 # Conservative Strategy
 print("\n--- Conservative Strategy ---")
-spark_conservative = SparkSession.builder \
-    .appName("Conservative Allocation") \
-    .config("spark.dynamicAllocation.enabled", "true") \
-    .config("spark.dynamicAllocation.minExecutors", "5") \
-    .config("spark.dynamicAllocation.maxExecutors", "20") \
-    .config("spark.dynamicAllocation.initialExecutors", "5") \
-    .getOrCreate()
-
 print("  Min: 5, Max: 20, Initial: 5")
 print("  Use case: Shared cluster, multiple users")
 
 # Aggressive Strategy
 print("\n--- Aggressive Strategy ---")
-spark_aggressive = SparkSession.builder \
-    .appName("Aggressive Allocation") \
-    .config("spark.dynamicAllocation.enabled", "true") \
-    .config("spark.dynamicAllocation.minExecutors", "20") \
-    .config("spark.dynamicAllocation.maxExecutors", "100") \
-    .config("spark.dynamicAllocation.initialExecutors", "50") \
-    .getOrCreate()
-
 print("  Min: 20, Max: 100, Initial: 50")
 print("  Use case: Dedicated resources, performance critical")
 
@@ -129,16 +120,7 @@ print("\n" + "=" * 50)
 print("Exercise 5: Cached Executor Behavior")
 print("=" * 50)
 
-spark_cached = SparkSession.builder \
-    .appName("Cached Executor Test") \
-    .config("spark.dynamicAllocation.enabled", "true") \
-    .config("spark.dynamicAllocation.minExecutors", "5") \
-    .config("spark.dynamicAllocation.maxExecutors", "30") \
-    .config("spark.dynamicAllocation.cachedExecutorIdleTimeout", "infinity") \
-    .config("spark.dynamicAllocation.executorIdleTimeout", "60s") \
-    .getOrCreate()
-
-df3 = spark_cached.read.parquet("your_table_path/")
+df3 = read_table(spark, "transactions")
 
 # Cache data
 print("Caching DataFrame...")
@@ -158,13 +140,9 @@ print("\n" + "=" * 50)
 print("Exercise 6: YARN Queue Configuration")
 print("=" * 50)
 
-# Submit to specific queue
-spark_queue = SparkSession.builder \
-    .appName("Queue Test") \
-    .config("spark.yarn.queue", "production") \
-    .getOrCreate()
-
-print(f"  Queue: {spark_queue.conf.get('spark.yarn.queue')}")
+# Submit to specific queue (YARN): spark-submit --queue production ...
+spark.conf.set("spark.yarn.queue", "production")
+print(f"  Queue: {show('spark.yarn.queue')}")
 print("""
 Note: Queue configuration may require:
 1. YARN queue setup in capacity-scheduler.xml
@@ -183,10 +161,5 @@ print("5. What are the trade-offs of each allocation strategy?")
 print("6. How does queue configuration affect resource allocation?")
 
 # Cleanup
-spark_static.stop()
-spark_dynamic.stop()
-spark_conservative.stop()
-spark_aggressive.stop()
-spark_cached.stop()
-spark_queue.stop()
+spark.stop()
 

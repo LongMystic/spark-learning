@@ -43,11 +43,14 @@ Master Spark Structured Streaming for real-time ETL pipelines in your on-premise
 - Allows query recovery
 - Stores state and offsets
 
-## 📖 Learning Path
+## 📖 Learning Path (Phase 5)
 
-Learn streaming patterns and optimization for production use.
+- [Day 30: Structured Streaming Fundamentals](day-30-streaming-fundamentals.md)
+- [Day 31: Stateful Streaming, Watermarks, Kafka & Exactly-Once](day-31-stateful-streaming.md)
+
+Exercises: [`exercises/streaming/`](../exercises/streaming/) (Kafka needs the `streaming` docker profile)
 
 ---
 
-**Coming Soon**: Detailed streaming guides
+**Start**: [Day 30: Structured Streaming Fundamentals](day-30-streaming-fundamentals.md)
 

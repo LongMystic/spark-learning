@@ -1,132 +1,49 @@
-# 🎉 Repository Setup Complete!
+# 🎉 Repository Status
 
-Your Spark Deep Dive learning repository has been successfully created and structured.
+Your Spark Deep Dive learning repository is a **40-day, self-contained** curriculum.
+Every lesson has a runnable exercise, and you can run all of it on your laptop.
 
-## 📁 What Was Created
+## 📁 What Exists
 
-### Core Learning Materials
-- ✅ **README.md** - Main overview and learning path
-- ✅ **GETTING_STARTED.md** - Comprehensive getting started guide
-- ✅ **PROGRESS.md** - Progress tracking system
-- ✅ **QUICK_REFERENCE.md** - Quick reference for common tasks
-- ✅ **TEMPLATE_day-lesson.md** - Template for future lessons
+### Core docs
+- ✅ **README.md** — overview & 40-day path
+- ✅ **GETTING_STARTED.md** — daily routine & tips
+- ✅ **PROGRESS.md** — day-by-day tracker (authoritative status)
+- ✅ **QUICK_REFERENCE.md** — config cheat sheet
+- ✅ **TEMPLATE_day-lesson.md** — lesson format
 
-### Learning Content (Phase 1: Fundamentals)
-- ✅ **Day 1**: Spark Execution Model Deep Dive
-- ✅ **Day 2**: Catalyst Optimizer Internals
-- 📝 Days 3-7: To be created as you progress
+### Local environment (run everything cluster-free)
+- ✅ **environment/** — Docker standalone cluster (1 master + 2 workers + history server),
+  `generate_data.py` sample-data generator, `requirements.txt`, Kafka producer for streaming
+- ✅ **common/spark_session.py** — shared SparkSession factory used by every exercise
 
-### Directory Structure
-```
-spark-learning/
-├── 01-fundamentals/          ✅ Created (Days 1-2 ready)
-├── 02-performance-tuning/     ✅ Created (structure ready)
-├── 03-troubleshooting/        ✅ Created (structure ready)
-├── 04-advanced-topics/        📝 To be created
-├── 05-real-world-scenarios/   📝 To be created
-├── 06-spark-thrift/           ✅ Created (structure ready)
-├── 07-structured-streaming/   ✅ Created (structure ready)
-├── 08-pyspark-zeppelin/       📝 To be created
-├── 09-iceberg-integration/    📝 To be created
-├── 10-production-patterns/    📝 To be created
-├── exercises/                 ✅ Created (2 exercises ready)
-├── code-samples/              ✅ Created (structure ready)
-└── notes/                     ✅ Created (for your notes)
-```
+### Lesson content
+- ✅ **Phase 1 — Days 1-7** (`01-fundamentals/`): lessons + exercises
+- ✅ **Phase 2 — Days 8-14** (`02-performance-tuning/`): lessons + exercises
+- 🚧 **Phases 3-5 — Days 15-40** (`03-` … `10-`): being authored; see PROGRESS.md
 
-### Exercises
-- ✅ **Exercise 1**: DAG Analysis (`exercises/fundamentals/exercise-01-dag-analysis.py`)
-- ✅ **Exercise 2**: Catalyst Optimizer (`exercises/fundamentals/exercise-02-catalyst-optimizer.py`)
+### Practice & evaluation
+- ✅ **exercises/** — runnable exercises (`fundamentals/`, `performance-tuning/`, and more as phases land)
+- 🚧 **exercises/solutions/** — worked solutions + expected observations
+- 🚧 **assessments/** — per-phase self-assessments, mastery checklist, capstones
+- 🚧 **interview-prep/** — question banks + incident drills
 
-## 🚀 Next Steps
-
-### 1. Initialize Git Repository (Optional but Recommended)
+## 🚀 Start Here
 
 ```bash
-cd spark-learning
-git init
-git add .
-git commit -m "Initial commit: Spark Deep Dive learning repository"
+pip install -r environment/requirements.txt
+python environment/generate_data.py --scale small
+python exercises/fundamentals/exercise-01-dag-analysis.py   # open http://localhost:4040
 ```
 
-### 2. Start Learning!
-
-1. **Read GETTING_STARTED.md** - Understand the learning path
-2. **Start Day 1** - Read `01-fundamentals/day-01-execution-model.md`
-3. **Run Exercise 1** - Complete `exercises/fundamentals/exercise-01-dag-analysis.py`
-4. **Update Progress** - Mark Day 1 complete in `PROGRESS.md`
-
-### 3. Daily Routine
-
-- **Morning**: Read the day's lesson (30-45 min)
-- **Afternoon**: Complete exercises (30-60 min)
-- **Evening**: Experiment and document (15-30 min)
-
-### 4. Customize for Your Environment
-
-- Update exercise files with your actual table paths
-- Modify configurations for your cluster
-- Document environment-specific findings in `notes/`
-
-## 📊 Learning Path Overview
-
-### Week 1: Deep Fundamentals
-- Days 1-2: ✅ Ready
-- Days 3-7: Will be created as you progress
-
-### Week 2: Performance Tuning
-- Structure ready, content to be added
-
-### Week 3: Troubleshooting
-- Structure ready, content to be added
-
-### Week 4+: Advanced & Production
-- Structure ready, content to be added
+Then read `01-fundamentals/day-01-execution-model.md` and follow `GETTING_STARTED.md`.
 
 ## 💡 Tips for Success
-
-1. **Be Consistent**: Even 30 minutes daily is better than long sessions
-2. **Practice Hands-On**: Run code on your actual cluster
-3. **Use Spark UI**: Always analyze execution in Spark UI
-4. **Take Notes**: Document insights in `notes/` directory
-5. **Apply Immediately**: Try optimizations on real jobs
-
-## 🎯 Your Mission
-
-By the end of this journey, you will:
-- ✅ Design efficient Spark jobs
-- ✅ Optimize for performance
-- ✅ Troubleshoot production issues
-- ✅ Tune Spark for on-premise clusters
-- ✅ Master Spark Thrift, Streaming, and PySpark
-
-## 📝 Progress Tracking
-
-Update `PROGRESS.md` regularly:
-- Mark completed days
-- Track improvements
-- Note key metrics
-
-## 🔗 Quick Links
-
-- **Start Learning**: `GETTING_STARTED.md`
-- **Day 1 Lesson**: `01-fundamentals/day-01-execution-model.md`
-- **Progress Tracker**: `PROGRESS.md`
-- **Quick Reference**: `QUICK_REFERENCE.md`
-
-## 🎓 Remember
-
-This is a **long-term journey**. Don't rush. Focus on:
-- Understanding concepts deeply
-- Practicing with real data
-- Applying to your work
-- Sharing with your team
+1. **Be consistent** — 30-45 min/day beats marathon sessions.
+2. **Run the code** — always inspect the Spark UI after a job.
+3. **Take notes** in `notes/`, and apply optimizations to real jobs at work.
+4. **Check yourself** with the phase assessments in `assessments/`.
 
 ---
 
-**You're all set! Begin your Spark mastery journey now! 🚀**
-
-Start with: `GETTING_STARTED.md` → `01-fundamentals/day-01-execution-model.md`
-
-Good luck! 🎉
-
+**You're all set — begin with Day 1! 🚀**

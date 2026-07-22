@@ -61,11 +61,16 @@ This section covers practical production scenarios and real-world use cases from
 - Compliance
 - Cost management
 
-## 📖 Learning Path
+## 📖 Learning Path (Phase 5)
 
-Start with large-scale ETL patterns, then progress through integration patterns and enterprise requirements.
+This directory hosts **Day 38** of Phase 5; related ecosystem topics live in sibling dirs:
+- [Day 38: Large-Scale ETL & CDC Patterns](day-38-large-scale-etl.md) ← here
+- Orchestration/DBT/Superset/architecture/cost: [`10-production-patterns/`](../10-production-patterns/)
+- Thrift `06-`, Streaming `07-`, PySpark `08-`, Iceberg `09-`
+
+Exercise: [`exercises/production/exercise-38-etl-cdc.py`](../exercises/production/)
 
 ---
 
-**Next**: [Large-Scale ETL Patterns](day-29-large-scale-etl.md)
+**Read**: [Day 38: Large-Scale ETL & CDC Patterns](day-38-large-scale-etl.md)
 

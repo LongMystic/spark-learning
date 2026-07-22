@@ -9,21 +9,23 @@ Instructions:
 4. Tune network settings
 """
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum, broadcast
+import os
+import sys
 import time
 
-spark = SparkSession.builder \
-    .appName("Network Optimization Exercise") \
-    .getOrCreate()
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table
+
+from pyspark.sql.functions import col, sum as spark_sum, broadcast
+
+spark = get_spark("Network Optimization Exercise")
 
 # Exercise 1: Measure Network Usage
 print("=" * 50)
 print("Exercise 1: Measure Network Usage")
 print("=" * 50)
 
-# TODO: Replace with your actual table path
-df = spark.read.parquet("your_table_path/")
+df = read_table(spark, "transactions")
 
 print("Running query with shuffle (groupBy)...")
 print("  Check Spark UI for network metrics")
@@ -50,7 +52,7 @@ print("=" * 50)
 # Bad: Shuffle all columns
 print("--- Shuffle All Columns ---")
 start = time.time()
-result_bad = df.join(df, "id")  # Shuffles all columns
+result_bad = df.join(df, "customer_id")  # Shuffles all columns
 # result_bad.count()  # Uncomment to execute
 time_bad = time.time() - start
 print(f"  Execution time: {time_bad:.2f}s")
@@ -58,8 +60,8 @@ print(f"  Execution time: {time_bad:.2f}s")
 # Good: Only shuffle needed columns
 print("\n--- Shuffle Only Needed Columns ---")
 start = time.time()
-result_good = df.select("id", "category", "amount").join(
-    df.select("id", "status"), "id"
+result_good = df.select("customer_id", "category", "amount").join(
+    df.select("customer_id", "status"), "customer_id"
 )
 # result_good.count()  # Uncomment to execute
 time_good = time.time() - start
@@ -129,13 +131,13 @@ print("\n" + "=" * 50)
 print("Exercise 5: Broadcast Join")
 print("=" * 50)
 
-# Create small table
-df_small = spark.range(0, 1000).withColumn("key", col("id"))
+# Create small table (keyed on store_id so it joins the fact table)
+df_small = spark.range(0, 50).withColumnRenamed("id", "store_id").withColumn("region_flag", col("store_id") % 5)
 
 # Without broadcast (shuffle)
 print("--- Without Broadcast (Shuffle) ---")
 start = time.time()
-result_no_broadcast = df.join(df_small, "key")
+result_no_broadcast = df.join(df_small, "store_id")
 # result_no_broadcast.count()  # Uncomment to execute
 time_no_broadcast = time.time() - start
 print(f"  Execution time: {time_no_broadcast:.2f}s")
@@ -144,7 +146,7 @@ print("  Small table shuffled over network")
 # With broadcast (no shuffle for small table)
 print("\n--- With Broadcast (No Shuffle) ---")
 start = time.time()
-result_broadcast = df.join(broadcast(df_small), "key")
+result_broadcast = df.join(broadcast(df_small), "store_id")
 # result_broadcast.count()  # Uncomment to execute
 time_broadcast = time.time() - start
 print(f"  Execution time: {time_broadcast:.2f}s")
@@ -218,11 +220,11 @@ print("  6. Improve data locality")
 
 # Example: Combined optimizations
 print("\n--- Combined Optimizations ---")
-df_optimized = df.select("id", "category", "amount").filter(col("status") == "active")
-df_small_optimized = df_small.select("id", "key")
+df_optimized = df.select("store_id", "category", "amount", "status").filter(col("status") == "active")
+df_small_optimized = df_small.select("store_id", "region_flag")
 
 start = time.time()
-result_optimized = df_optimized.join(broadcast(df_small_optimized), "key")
+result_optimized = df_optimized.join(broadcast(df_small_optimized), "store_id")
 # result_optimized.count()  # Uncomment to execute
 time_optimized = time.time() - start
 

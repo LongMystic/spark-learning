@@ -6,10 +6,12 @@ This guide will help you get started with your structured learning path.
 
 ## 📋 Prerequisites
 
-- Access to Spark cluster (on-premise Hadoop)
-- Python 3.x with PySpark installed
-- Access to Spark UI (typically http://driver:4040)
-- Basic familiarity with Spark (you have this! ✅)
+You need **one** of these — no production cluster required:
+- **Local (recommended to start)**: Python 3.9+ and `pip install -r environment/requirements.txt`, OR Docker for the [standalone cluster](environment/README.md).
+- **On-prem**: access to your Spark/YARN cluster and its Spark UI.
+
+Plus basic familiarity with Spark syntax and architecture (you have this! ✅).
+See [environment/README.md](environment/README.md) to set up in ~5 minutes.
 
 ## 🗺️ Learning Path Overview
 
@@ -119,27 +121,32 @@ This guide will help you get started with your structured learning path.
 
 ## 🔧 Setup Your Environment
 
-### 1. Connect to Your Cluster
+Full instructions: [environment/README.md](environment/README.md). In short:
 
-```python
-from pyspark.sql import SparkSession
+### 1. Install & generate data
 
-spark = SparkSession.builder \
-    .appName("Learning Exercise") \
-    .config("spark.sql.adaptive.enabled", "true") \
-    .getOrCreate()
+```bash
+pip install -r environment/requirements.txt
+python environment/generate_data.py --scale small     # writes sample tables to ./data
 ```
 
-### 2. Access Spark UI
+### 2. Exercises use a shared SparkSession
 
-- Default: `http://driver-hostname:4040`
-- For YARN: `http://resource-manager:8088`
-- Navigate to your application
+You never hand-build a session — exercises import it, so the same code runs locally or on prod:
 
-### 3. Prepare Test Data
+```python
+from common.spark_session import get_spark, read_table
+spark = get_spark("Learning Exercise")     # local[*] by default
+txns  = read_table(spark, "transactions")  # reads the generated sample data
+```
 
-- Use your existing Hive/Iceberg tables
-- Or create sample datasets for practice
+Run against the cluster instead: `export SPARK_MASTER=yarn` (and point `DATA_DIR` at your data).
+
+### 3. Access the Spark UI
+
+- Local app (while running): `http://localhost:4040`
+- Docker cluster: master `http://localhost:8080`, history `http://localhost:18080`
+- On YARN: `http://resource-manager:8088` → your application
 
 ## 📊 Tracking Progress
 
@@ -172,9 +179,10 @@ spark = SparkSession.builder \
 
 ## 🎓 Success Metrics
 
-Track your progress:
+Track your progress (full competency list in [assessments/mastery-checklist.md](assessments/mastery-checklist.md)):
 
-- [ ] Completed all 35+ days
+- [ ] Completed all 40 days
+- [ ] Passed all 5 phase assessments (`assessments/`)
 - [ ] Optimized at least 5 production jobs
 - [ ] Fixed at least 3 production issues
 - [ ] Shared knowledge with team

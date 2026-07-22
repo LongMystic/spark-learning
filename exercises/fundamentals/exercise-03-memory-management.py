@@ -9,22 +9,24 @@ Instructions:
 4. Optimize memory settings
 """
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum
-from pyspark import StorageLevel
+import os
+import sys
 import time
 
-spark = SparkSession.builder \
-    .appName("Memory Management Exercise") \
-    .getOrCreate()
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table
+
+from pyspark.sql.functions import col, sum as spark_sum
+from pyspark import StorageLevel
+
+spark = get_spark("Memory Management Exercise")
 
 # Exercise 1: Monitor Memory Usage
 print("=" * 50)
 print("Exercise 1: Monitor Memory Usage")
 print("=" * 50)
 
-# TODO: Replace with your actual table path
-df = spark.read.parquet("your_table_path/")
+df = read_table(spark, "transactions")
 
 # Cache a DataFrame
 print("Caching DataFrame...")
@@ -133,7 +135,7 @@ storage_levels = [
 
 for name, level in storage_levels:
     print(f"\n--- {name} ---")
-    df_test = spark.read.parquet("your_table_path/")
+    df_test = read_table(spark, "transactions")
     df_test.persist(level)
     
     start = time.time()

@@ -8,9 +8,14 @@ Instructions:
 3. Measure performance impact of configuration changes
 """
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum, count
+import os
+import sys
 import time
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table
+
+from pyspark.sql.functions import col, sum as spark_sum, count
 
 # Exercise 1: Calculate Optimal Configuration
 print("=" * 50)
@@ -67,30 +72,26 @@ print("\n" + "=" * 50)
 print("Exercise 2: Apply Configuration")
 print("=" * 50)
 
-spark = SparkSession.builder \
-    .appName("Configuration Tuning Exercise") \
-    .config("spark.executor.memory", optimal_config['executor_memory']) \
-    .config("spark.executor.cores", str(optimal_config['executor_cores'])) \
-    .config("spark.executor.instances", str(optimal_config['executor_instances'])) \
-    .config("spark.executor.memoryOverhead", optimal_config['executor_memory_overhead']) \
-    .config("spark.default.parallelism", str(optimal_config['default_parallelism'])) \
-    .config("spark.sql.shuffle.partitions", str(optimal_config['shuffle_partitions'])) \
-    .getOrCreate()
+# NOTE: executor.memory/cores/instances only take effect at submit time on a
+# real cluster. Locally they are ignored, but the calculation above is exactly
+# what you'd pass to spark-submit --executor-memory / --num-executors on YARN.
+spark = get_spark("Configuration Tuning Exercise", extra_conf={
+    "spark.default.parallelism": str(optimal_config['default_parallelism']),
+    "spark.sql.shuffle.partitions": str(optimal_config['shuffle_partitions']),
+})
 
-print("\nApplied Configuration:")
-print(f"  Executor Memory: {spark.conf.get('spark.executor.memory')}")
-print(f"  Executor Cores: {spark.conf.get('spark.executor.cores')}")
-print(f"  Executor Instances: {spark.conf.get('spark.executor.instances')}")
-print(f"  Default Parallelism: {spark.conf.get('spark.default.parallelism')}")
-print(f"  Shuffle Partitions: {spark.conf.get('spark.sql.shuffle.partitions')}")
+print("\nCalculated cluster configuration (pass these to spark-submit on YARN):")
+print(f"  --executor-memory {optimal_config['executor_memory']}")
+print(f"  --executor-cores  {optimal_config['executor_cores']}")
+print(f"  --num-executors   {optimal_config['executor_instances']}")
+print(f"  spark.sql.shuffle.partitions = {spark.conf.get('spark.sql.shuffle.partitions')}")
 
 # Exercise 3: Compare Different Configurations
 print("\n" + "=" * 50)
 print("Exercise 3: Compare Configurations")
 print("=" * 50)
 
-# TODO: Replace with your actual table path
-df = spark.read.parquet("your_table_path/")
+df = read_table(spark, "transactions")
 
 # Configuration 1: Conservative (small executors)
 print("\n--- Configuration 1: Conservative ---")

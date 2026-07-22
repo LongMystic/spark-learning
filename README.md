@@ -1,6 +1,10 @@
-# Spark Deep Dive Learning Path 🚀
+# Spark Deep Dive — 40-Day Mastery Path 🚀
 
-> **Mission**: Master Spark for on-premise data platforms to design, optimize, and troubleshoot Spark jobs at production level.
+> **Mission**: Master Apache Spark for on-premise data platforms — design, optimize, and troubleshoot Spark jobs at production level.
+
+Every lesson has a matching **runnable** exercise. You do **not** need the production
+cluster: a one-command [local environment](environment/README.md) gives you a real
+multi-executor Spark UI on your laptop.
 
 ## 🎯 Learning Objectives
 
@@ -9,92 +13,75 @@ By the end of this journey, you will be able to:
 - **Optimize** Spark applications for performance and resource utilization
 - **Troubleshoot** and fix common Spark errors and performance issues
 - **Tune** Spark configurations for on-premise Hadoop clusters
-- **Master** Spark Thrift Server, Structured Streaming, and PySpark best practices
+- **Master** Spark Thrift Server, Structured Streaming, Iceberg, and PySpark best practices
 
-## 📚 Current Knowledge Level
-- ✅ Spark syntax and Structured API
-- ✅ Spark Architecture fundamentals
-- ✅ Resource managers (YARN/Mesos) basics
-
-## 🛠️ Your Tech Stack
-- **Platform**: On-premise Hadoop cluster
+## 🛠️ Target Tech Stack
+- **Platform**: On-premise Hadoop cluster (YARN)
 - **Storage**: Hive, Iceberg
 - **Processing**: Spark (Thrift Server, PySpark, Structured Streaming)
-- **Orchestration**: Airflow
-- **Transformation**: DBT
-- **Visualization**: Superset
+- **Orchestration**: Airflow · **Transformation**: DBT · **Visualization**: Superset
+
+## 🚀 Getting Started (5 minutes)
+
+```bash
+# 1. Install
+pip install -r environment/requirements.txt
+# 2. Generate laptop-friendly sample data (~1M rows)
+python environment/generate_data.py --scale small
+# 3. Run Day 1's exercise and open http://localhost:4040
+python exercises/fundamentals/exercise-01-dag-analysis.py
+```
+
+Prefer a real cluster feel? Use the [Docker standalone cluster](environment/README.md)
+(1 master + 2 workers + history server). Then read
+[Day 1: Execution Model](01-fundamentals/day-01-execution-model.md) and follow
+[GETTING_STARTED.md](GETTING_STARTED.md) for the daily routine.
+
+## 🗺️ The Path — 5 Phases, 40 Days
+
+| Phase | Days | Focus | Directory | Status |
+|-------|------|-------|-----------|--------|
+| **1. Deep Fundamentals** | 1–7 | Execution model, Catalyst, memory, shuffle, partitioning, joins, caching | [`01-fundamentals/`](01-fundamentals/) | ✅ Complete |
+| **2. Performance Tuning** | 8–14 | Config, resources, skew, shuffle/join/memory/network tuning | [`02-performance-tuning/`](02-performance-tuning/) | ✅ Complete |
+| **3. Troubleshooting Mastery** | 15–21 | Errors, OOM, task/shuffle failures, serialization, incident response | [`03-troubleshooting/`](03-troubleshooting/) | 🚧 In progress |
+| **4. Advanced Topics** | 22–28 | Catalyst rules, advanced SQL, UDF/AQE, broadcast, bucketing, DPP, CBO | [`04-advanced-topics/`](04-advanced-topics/) | 🚧 In progress |
+| **5. Production & Ecosystem** | 29–40 | Thrift, Streaming, PySpark/Zeppelin, Iceberg, Airflow, DBT, Superset, patterns | [`05-`…`10-`](10-production-patterns/) | 🚧 In progress |
+
+Detailed day-by-day breakdown and status: **[PROGRESS.md](PROGRESS.md)**.
 
 ## 📁 Repository Structure
 
 ```
 spark-learning/
-├── 01-fundamentals/          # Core concepts deep dive
-├── 02-performance-tuning/     # Optimization techniques
-├── 03-troubleshooting/       # Common errors and fixes
-├── 04-advanced-topics/       # Advanced Spark features
-├── 05-real-world-scenarios/  # Production use cases
-├── 06-spark-thrift/          # Spark Thrift Server mastery
-├── 07-structured-streaming/  # Real-time ETL patterns
-├── 08-pyspark-zeppelin/      # PySpark best practices
-├── 09-iceberg-integration/   # Spark + Iceberg optimization
-├── 10-production-patterns/   # Enterprise patterns
-├── exercises/                 # Hands-on exercises
+├── environment/              # 🧪 Local Spark cluster + sample-data generator (start here)
+├── common/                   # Shared SparkSession factory used by every exercise
+├── 01-fundamentals/          # Phase 1 — Days 1-7      ✅
+├── 02-performance-tuning/    # Phase 2 — Days 8-14     ✅
+├── 03-troubleshooting/       # Phase 3 — Days 15-21
+├── 04-advanced-topics/       # Phase 4 — Days 22-28
+├── 05-real-world-scenarios/  # Phase 5 — ETL/CDC (Day 38)
+├── 06-spark-thrift/          # Phase 5 — Thrift Server (Day 29)
+├── 07-structured-streaming/  # Phase 5 — Streaming (Days 30-31)
+├── 08-pyspark-zeppelin/      # Phase 5 — PySpark/Zeppelin (Day 32)
+├── 09-iceberg-integration/   # Phase 5 — Iceberg (Days 33-34)
+├── 10-production-patterns/   # Phase 5 — Orchestration & patterns (Days 35-40)
+├── exercises/                # Hands-on, runnable exercises (+ solutions/)
+├── assessments/              # Per-phase self-assessments, mastery checklist, capstones
+├── interview-prep/           # Interview question banks + incident drills
 ├── code-samples/             # Reference implementations
-└── notes/                     # Learning notes and insights
+└── notes/                    # Your learning notes
 ```
 
-## 🗓️ Learning Path
-
-### Phase 1: Deep Fundamentals (Days 1-7)
-- Spark execution model deep dive
-- Catalyst optimizer internals
-- Memory management and garbage collection
-- Shuffle mechanics and optimization
-
-### Phase 2: Performance Tuning (Days 8-14)
-- Configuration tuning for on-premise
-- Resource allocation strategies
-- Data skew handling
-- Partitioning strategies
-
-### Phase 3: Troubleshooting Mastery (Days 15-21)
-- Common error patterns
-- Debugging techniques
-- Monitoring and metrics
-- Log analysis
-
-### Phase 4: Advanced Topics (Days 22-28)
-- Custom optimizations
-- Advanced SQL patterns
-- UDF/UDAF performance
-- Broadcast joins and bucketing
-
-### Phase 5: Production Patterns (Days 29+)
-- Spark Thrift Server optimization
-- Structured Streaming patterns
-- Integration with Airflow/DBT
-- Iceberg table optimization
-
-## 🚀 Getting Started
-
-Start with [Day 1: Spark Execution Model Deep Dive](01-fundamentals/day-01-execution-model.md)
-
-## 📝 Progress Tracking
-
-- [ ] Phase 1: Deep Fundamentals
-- [ ] Phase 2: Performance Tuning
-- [ ] Phase 3: Troubleshooting Mastery
-- [ ] Phase 4: Advanced Topics
-- [ ] Phase 5: Production Patterns
+## 📚 Supporting Docs
+- [GETTING_STARTED.md](GETTING_STARTED.md) — daily routine & learning tips
+- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) — config cheat sheet
+- [environment/README.md](environment/README.md) — local cluster & data setup
+- [assessments/mastery-checklist.md](assessments/mastery-checklist.md) — the competency checklist
+- [TEMPLATE_day-lesson.md](TEMPLATE_day-lesson.md) — lesson format
 
 ## 📖 Resources
-
-- Official Spark Documentation
-- Performance tuning guides
-- Community best practices
-- Real-world case studies
+- Official Spark Documentation · Performance tuning guides · Community best practices · Real-world case studies
 
 ---
 
 **Let's begin the journey! 🎓**
-

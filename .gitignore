@@ -28,6 +28,10 @@ Thumbs.db
 spark-warehouse/
 metastore_db/
 derby.log
+spark-events/
+iceberg-warehouse/
+checkpoints/
+_checkpoint*/
 
 # Logs
 *.log

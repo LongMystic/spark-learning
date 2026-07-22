@@ -54,11 +54,13 @@ Master PySpark best practices for your team's primary development environment (Z
 - Parameter passing
 - Visualization best practices
 
-## 📖 Learning Path
+## 📖 Learning Path (Phase 5)
 
-Start with PySpark best practices, then learn Zeppelin integration patterns.
+- [Day 32: PySpark Best Practices & Zeppelin](day-32-pyspark-best-practices.md)
+
+Exercise: [`exercises/production/exercise-32-pyspark-best-practices.py`](../exercises/production/)
 
 ---
 
-**Next**: [PySpark Best Practices](day-30-pyspark-best-practices.md)
+**Read**: [Day 32: PySpark Best Practices & Zeppelin](day-32-pyspark-best-practices.md)
 

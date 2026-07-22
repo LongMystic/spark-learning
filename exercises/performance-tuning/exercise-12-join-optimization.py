@@ -9,13 +9,16 @@ Instructions:
 4. Handle join skew
 """
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum, broadcast
+import os
+import sys
 import time
 
-spark = SparkSession.builder \
-    .appName("Join Optimization Exercise") \
-    .getOrCreate()
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table
+
+from pyspark.sql.functions import col, sum as spark_sum, broadcast, when, concat, lit
+
+spark = get_spark("Join Optimization Exercise")
 
 # Exercise 1: Compare Join Strategies
 print("=" * 50)
@@ -54,14 +57,13 @@ print("\n" + "=" * 50)
 print("Exercise 2: Filter Before Join")
 print("=" * 50)
 
-# TODO: Replace with your actual table paths
-df1 = spark.read.parquet("table1_path/")
-df2 = spark.read.parquet("table2_path/")
+df1 = read_table(spark, "transactions")
+df2 = read_table(spark, "customers")
 
 # Bad: Join then filter
 print("--- Join Then Filter ---")
 start = time.time()
-result_bad = df1.join(df2, "id").filter(col("status") == "active")
+result_bad = df1.join(df2, "customer_id").filter(col("status") == "active")
 # result_bad.count()  # Uncomment to execute
 time_bad = time.time() - start
 print(f"  Execution time: {time_bad:.2f}s")
@@ -71,7 +73,7 @@ print("  Shuffles all data, then filters")
 print("\n--- Filter Then Join ---")
 start = time.time()
 result_good = df1.filter(col("status") == "active").join(
-    df2.filter(col("status") == "active"), "id"
+    df2.filter(col("segment") == "enterprise"), "customer_id"
 )
 # result_good.count()  # Uncomment to execute
 time_good = time.time() - start
@@ -88,7 +90,7 @@ print("=" * 50)
 # Bad: Join all columns
 print("--- Join All Columns ---")
 start = time.time()
-result_bad = df1.join(df2, "id")
+result_bad = df1.join(df2, "customer_id")
 # result_bad.count()  # Uncomment to execute
 time_bad = time.time() - start
 print(f"  Execution time: {time_bad:.2f}s")
@@ -96,8 +98,8 @@ print(f"  Execution time: {time_bad:.2f}s")
 # Good: Select needed columns first
 print("\n--- Select Needed Columns First ---")
 start = time.time()
-result_good = df1.select("id", "col1", "col2").join(
-    df2.select("id", "col3"), "id"
+result_good = df1.select("customer_id", "amount", "quantity").join(
+    df2.select("customer_id", "segment"), "customer_id"
 )
 # result_good.count()  # Uncomment to execute
 time_good = time.time() - start
@@ -138,14 +140,12 @@ print("Cost-Based Optimization Enabled:")
 print(f"  CBO Enabled: {spark.conf.get('spark.sql.cbo.enabled')}")
 print(f"  Join Reorder: {spark.conf.get('spark.sql.cbo.joinReorder.enabled')}")
 
-# TODO: Collect statistics first
-# spark.sql("ANALYZE TABLE table1 COMPUTE STATISTICS FOR ALL COLUMNS")
-# spark.sql("ANALYZE TABLE table2 COMPUTE STATISTICS FOR ALL COLUMNS")
+# TODO: Collect statistics first (see Day 28 for CBO + ANALYZE TABLE)
 
-df3 = spark.read.parquet("table3_path/")
+df3 = read_table(spark, "products")
 
 # Multiple joins - Catalyst will optimize order
-result = df1.join(df2, "id").join(df3, "id")
+result = df1.join(df2, "customer_id").join(df3, "product_id")
 result.explain()
 print("  Catalyst optimizer chooses join order based on statistics")
 
@@ -154,21 +154,25 @@ print("\n" + "=" * 50)
 print("Exercise 6: Bucket Join")
 print("=" * 50)
 
-# Create bucketed tables
-print("Creating bucketed tables...")
-df1.write.bucketBy(10, "id").sortBy("id").saveAsTable("bucketed_table1")
-df2.write.bucketBy(10, "id").sortBy("id").saveAsTable("bucketed_table2")
+# Create bucketed tables (requires a catalog; skipped gracefully on a bare
+# local session without Hive support). See Day 26 for bucketing in depth.
+try:
+    print("Creating bucketed tables...")
+    spark.sql("DROP TABLE IF EXISTS bucketed_table1")
+    spark.sql("DROP TABLE IF EXISTS bucketed_table2")
+    df1.write.mode("overwrite").bucketBy(10, "customer_id").sortBy("customer_id").saveAsTable("bucketed_table1")
+    df2.write.mode("overwrite").bucketBy(10, "customer_id").sortBy("customer_id").saveAsTable("bucketed_table2")
 
-# Read bucketed tables
-df1_bucketed = spark.table("bucketed_table1")
-df2_bucketed = spark.table("bucketed_table2")
+    df1_bucketed = spark.table("bucketed_table1")
+    df2_bucketed = spark.table("bucketed_table2")
 
-# Join bucketed tables
-print("Joining bucketed tables...")
-result_bucketed = df1_bucketed.join(df2_bucketed, "id")
-result_bucketed.explain()
-print("  Check explain plan - should show no shuffle")
-print("  Bucket join avoids shuffle when both tables are bucketed")
+    print("Joining bucketed tables...")
+    result_bucketed = df1_bucketed.join(df2_bucketed, "customer_id")
+    result_bucketed.explain()
+    print("  Check explain plan - should show no Exchange (shuffle)")
+except Exception as e:  # noqa: BLE001
+    print(f"  (Skipped bucket-join demo: {type(e).__name__}: {e})")
+    print("  Enable Hive support or run on the cluster to try bucketing.")
 
 # Exercise 7: Join Skew Handling
 print("\n" + "=" * 50)
@@ -219,8 +223,8 @@ print("=" * 50)
 # Chain of joins
 print("Optimizing chain of joins...")
 result_chain = df1.filter(col("status") == "active") \
-    .join(broadcast(df2), "id") \
-    .join(broadcast(df3), "id")
+    .join(broadcast(df2), "customer_id") \
+    .join(broadcast(df3), "product_id")
 
 result_chain.explain()
 print("""

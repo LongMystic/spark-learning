@@ -40,11 +40,20 @@ This section covers common Spark errors, debugging techniques, and solutions for
 - **Configuration Issues**: Wrong settings, resource limits
 - **Code Issues**: Serialization, UDF problems
 
-## 📖 Learning Path
+## 📖 Learning Path (Days 15-21)
 
-Start with common error patterns, then learn debugging techniques and solutions.
+1. [Day 15: Common Error Patterns & Reading Logs/Stack Traces](day-15-common-errors.md)
+2. [Day 16: OOM Debugging (Driver vs Executor)](day-16-oom-debugging.md)
+3. [Day 17: Task Failure & Retry Analysis](day-17-task-failure-analysis.md)
+4. [Day 18: Shuffle Error Resolution (FetchFailed)](day-18-shuffle-error-resolution.md)
+5. [Day 19: Serialization & UDF Issues](day-19-serialization-issues.md)
+6. [Day 20: Performance Debugging (Spark UI & SQL Tab)](day-20-performance-debugging.md)
+7. [Day 21: Production Incident Response](day-21-incident-response.md)
+
+Exercises: [`exercises/troubleshooting/`](../exercises/troubleshooting/) ·
+Assessment: [`assessments/phase-3-assessment.md`](../assessments/phase-3-assessment.md)
 
 ---
 
-**Next**: [Common Error Patterns](day-15-common-errors.md)
+**Start**: [Day 15: Common Error Patterns](day-15-common-errors.md)
 

@@ -9,13 +9,25 @@ Instructions:
 4. Handle small file problems
 """
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, year, month, dayofmonth
+import os
+import sys
+import tempfile
 import time
 
-spark = SparkSession.builder \
-    .appName("Partitioning Strategies Exercise") \
-    .getOrCreate()
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark
+
+from pyspark.sql.functions import col, year, month, dayofmonth
+
+spark = get_spark("Partitioning Strategies Exercise")
+
+# Write demo outputs to a scratch dir so we don't clutter the repo.
+SCRATCH = tempfile.mkdtemp(prefix="ex05_")
+print(f"Scratch output dir: {SCRATCH}")
+
+
+def out(name):
+    return os.path.join(SCRATCH, name)
 
 # Exercise 1: Create Partitioned Table
 print("=" * 50)
@@ -32,7 +44,7 @@ df = spark.range(0, 1000000).withColumn(
 
 # Write partitioned by year and month
 print("Writing partitioned data...")
-df.write.mode("overwrite").partitionBy("year", "month").parquet("partitioned_data/")
+df.write.mode("overwrite").partitionBy("year", "month").parquet(out("partitioned_data"))
 
 print("Partitioned data written to: partitioned_data/")
 print("  Structure: year=YYYY/month=MM/data.parquet")
@@ -45,7 +57,7 @@ print("=" * 50)
 # Query with partition filter (should prune)
 print("--- Query with Partition Filter ---")
 start = time.time()
-df_filtered = spark.read.parquet("partitioned_data/") \
+df_filtered = spark.read.parquet(out("partitioned_data")) \
     .filter((col("year") == 2023) & (col("month") == 1))
 # df_filtered.count()  # Uncomment to execute
 time_pruned = time.time() - start
@@ -58,7 +70,7 @@ df_filtered.explain(extended=True)
 # Query without partition filter (reads all partitions)
 print("\n--- Query without Partition Filter ---")
 start = time.time()
-df_all = spark.read.parquet("partitioned_data/")
+df_all = spark.read.parquet(out("partitioned_data"))
 # df_all.count()  # Uncomment to execute
 time_all = time.time() - start
 
@@ -74,17 +86,17 @@ print("=" * 50)
 
 # Strategy 1: Only year
 print("--- Strategy 1: Only Year ---")
-df.write.mode("overwrite").partitionBy("year").parquet("strategy1/")
+df.write.mode("overwrite").partitionBy("year").parquet(out("strategy1"))
 print("  Partitions: year only")
 
 # Strategy 2: year, month
 print("\n--- Strategy 2: Year, Month ---")
-df.write.mode("overwrite").partitionBy("year", "month").parquet("strategy2/")
+df.write.mode("overwrite").partitionBy("year", "month").parquet(out("strategy2"))
 print("  Partitions: year, month")
 
 # Strategy 3: year, month, day
 print("\n--- Strategy 3: Year, Month, Day ---")
-df.write.mode("overwrite").partitionBy("year", "month", "day").parquet("strategy3/")
+df.write.mode("overwrite").partitionBy("year", "month", "day").parquet(out("strategy3"))
 print("  Partitions: year, month, day")
 
 print("""
@@ -103,13 +115,13 @@ print("=" * 50)
 # Static overwrite (overwrites all partitions)
 print("--- Static Overwrite ---")
 spark.conf.set("spark.sql.sources.partitionOverwriteMode", "static")
-df.write.mode("overwrite").partitionBy("year", "month").parquet("partitioned_data/")
+df.write.mode("overwrite").partitionBy("year", "month").parquet(out("partitioned_data"))
 print("  Overwrites all partitions")
 
 # Dynamic overwrite (only overwrites partitions in data)
 print("\n--- Dynamic Overwrite ---")
 spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
-df.filter(col("year") == 2023).write.mode("overwrite").partitionBy("year", "month").parquet("partitioned_data/")
+df.filter(col("year") == 2023).write.mode("overwrite").partitionBy("year", "month").parquet(out("partitioned_data"))
 print("  Only overwrites partitions present in data")
 
 # Exercise 5: Handle Small Files
@@ -121,17 +133,17 @@ print("=" * 50)
 print("Creating many small files...")
 for i in range(10):
     df.filter(col("id") % 10 == i).write.mode("append") \
-      .partitionBy("year", "month").parquet("small_files/")
+      .partitionBy("year", "month").parquet(out("small_files"))
 
 print("  Created many small files")
 print("  Check file count and sizes")
 
 # Coalesce to reduce files
 print("\nCoalescing files...")
-df_coalesced = spark.read.parquet("small_files/") \
+df_coalesced = spark.read.parquet(out("small_files")) \
     .repartition(10, "year", "month")
 df_coalesced.write.mode("overwrite") \
-    .partitionBy("year", "month").parquet("coalesced_files/")
+    .partitionBy("year", "month").parquet(out("coalesced_files"))
 
 print("  Files coalesced")
 print("  Compare file count: before vs after")
@@ -158,30 +170,31 @@ print("\n" + "=" * 50)
 print("Exercise 7: Hive Table Partitioning")
 print("=" * 50)
 
-# Create partitioned Hive table
-print("Creating partitioned Hive table...")
-spark.sql("""
-    CREATE TABLE IF NOT EXISTS partitioned_sales (
-        id BIGINT,
-        amount DECIMAL(10,2)
-    ) PARTITIONED BY (year INT, month INT)
-    STORED AS PARQUET
-""")
+# Create partitioned managed table (requires a catalog; skipped gracefully on
+# a bare local session without Hive support).
+try:
+    print("Creating partitioned managed table...")
+    spark.sql("DROP TABLE IF EXISTS partitioned_sales")
+    spark.sql("""
+        CREATE TABLE IF NOT EXISTS partitioned_sales (
+            id BIGINT,
+            amount DECIMAL(10,2)
+        ) PARTITIONED BY (year INT, month INT)
+        USING PARQUET
+    """)
+    df.select("id", "amount", "year", "month").write.mode("append").insertInto("partitioned_sales")
+    print("  Partitioned table created")
 
-# Insert data
-df.select("id", "amount", "year", "month").write.mode("append").insertInto("partitioned_sales")
-
-print("  Partitioned Hive table created")
-print("  Query with partition filters for pruning")
-
-# Query with partition pruning
-result = spark.sql("""
-    SELECT * FROM partitioned_sales
-    WHERE year = 2023 AND month = 1
-""")
-
-result.explain(extended=True)
-print("  Check explain plan for PartitionFilters")
+    # Query with partition pruning
+    result = spark.sql("""
+        SELECT * FROM partitioned_sales
+        WHERE year = 1970 AND month = 1
+    """)
+    result.explain(extended=True)
+    print("  Check explain plan for PartitionFilters")
+except Exception as e:  # noqa: BLE001
+    print(f"  (Skipped managed-table demo: {type(e).__name__}: {e})")
+    print("  Enable Hive support or run on the cluster to try this section.")
 
 print("\n" + "=" * 50)
 print("Analysis Questions:")

@@ -9,21 +9,23 @@ Instructions:
 4. Compare shuffle configurations
 """
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum
+import os
+import sys
 import time
 
-spark = SparkSession.builder \
-    .appName("Shuffle Mechanics Exercise") \
-    .getOrCreate()
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table
+
+from pyspark.sql.functions import col, sum as spark_sum
+
+spark = get_spark("Shuffle Mechanics Exercise")
 
 # Exercise 1: Identify Shuffle Operations
 print("=" * 50)
 print("Exercise 1: Identify Shuffle Operations")
 print("=" * 50)
 
-# TODO: Replace with your actual table path
-df = spark.read.parquet("your_table_path/")
+df = read_table(spark, "transactions")
 
 # Operations that cause shuffle
 print("Operations that cause shuffle:")
@@ -36,8 +38,8 @@ print("  Check explain plan - should show Exchange (shuffle)")
 
 # Join (shuffle)
 print("\n2. Join (causes shuffle):")
-df2 = spark.read.parquet("table2_path/")
-result2 = df.join(df2, "id")
+df2 = read_table(spark, "customers")
+result2 = df.join(df2, "customer_id")
 result2.explain()
 print("  Check explain plan - should show Exchange (shuffle)")
 

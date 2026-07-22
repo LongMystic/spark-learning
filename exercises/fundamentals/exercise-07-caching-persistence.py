@@ -9,14 +9,17 @@ Instructions:
 4. Optimize caching strategy
 """
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum
-from pyspark import StorageLevel
+import os
+import sys
 import time
 
-spark = SparkSession.builder \
-    .appName("Caching and Persistence Exercise") \
-    .getOrCreate()
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table
+
+from pyspark.sql.functions import col, sum as spark_sum
+from pyspark import StorageLevel
+
+spark = get_spark("Caching and Persistence Exercise")
 
 # Exercise 1: Compare With and Without Cache
 print("=" * 50)
@@ -24,7 +27,7 @@ print("Exercise 1: Compare With and Without Cache")
 print("=" * 50)
 
 # TODO: Replace with your actual table path
-df = spark.read.parquet("your_table_path/")
+df = read_table(spark, "transactions")
 
 # Without cache
 print("--- Without Cache ---")
@@ -78,7 +81,7 @@ storage_levels = [
 
 for name, level in storage_levels:
     print(f"\n--- {name} ---")
-    df_test = spark.read.parquet("your_table_path/")
+    df_test = read_table(spark, "transactions")
     df_test.persist(level)
     
     start = time.time()
@@ -120,9 +123,9 @@ print("Exercise 4: Cache Eviction")
 print("=" * 50)
 
 # Cache multiple DataFrames
-df1 = spark.read.parquet("table1_path/")
-df2 = spark.read.parquet("table2_path/")
-df3 = spark.read.parquet("table3_path/")
+df1 = read_table(spark, "transactions")
+df2 = read_table(spark, "customers")
+df3 = read_table(spark, "products")
 
 df1.cache()
 df2.cache()
@@ -152,13 +155,13 @@ print("  4. Simple operations (cache overhead > benefit)")
 
 # Example: Simple operation (don't cache)
 print("\nExample: Simple filter (don't cache)")
-df_simple = spark.read.parquet("your_table_path/")
+df_simple = read_table(spark, "transactions")
 # df_simple.filter(...).cache()  # Bad - filter is fast, cache overhead not worth it
 
 # Example: Expensive operation (do cache)
 print("\nExample: Expensive join (do cache)")
-df_expensive = spark.read.parquet("table1_path/").join(
-    spark.read.parquet("table2_path/"), "id"
+df_expensive = read_table(spark, "transactions").join(
+    read_table(spark, "customers"), "customer_id"
 )
 df_expensive.cache()  # Good - expensive operation, used multiple times
 df_expensive.count()
@@ -168,7 +171,7 @@ print("\n" + "=" * 50)
 print("Exercise 6: Unpersist")
 print("=" * 50)
 
-df_cached = spark.read.parquet("your_table_path/")
+df_cached = read_table(spark, "transactions")
 df_cached.cache()
 df_cached.count()
 
@@ -194,11 +197,11 @@ print("  4. Intermediate results in complex pipelines")
 
 # Example: Iterative algorithm
 print("\nExample: Iterative computation")
-df_base = spark.read.parquet("your_table_path/")
+df_base = read_table(spark, "transactions")
 df_base.cache()
 
 for i in range(5):
-    result = df_base.filter(col("iteration") == i).groupBy("key").agg(spark_sum("amount"))
+    result = df_base.filter(col("store_id") == i).groupBy("category").agg(spark_sum("amount"))
     # result.count()  # Uncomment to execute
     print(f"  Iteration {i}: Uses cached base DataFrame")
 

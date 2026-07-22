@@ -48,11 +48,13 @@ Master Spark Thrift Server for your team's primary use cases:
 - Memory management
 - Long-running queries
 
-## 📖 Learning Path
+## 📖 Learning Path (Phase 5)
 
-Deep dive into Thrift Server internals and optimization techniques.
+- [Day 29: Spark Thrift Server — Architecture & Tuning](day-29-thrift-server.md)
+
+Exercise: [`exercises/production/exercise-29-thrift-server.py`](../exercises/production/)
 
 ---
 
-**Coming Soon**: Detailed guides on Thrift Server optimization
+**Read**: [Day 29: Spark Thrift Server](day-29-thrift-server.md)
 

@@ -8,13 +8,16 @@ Instructions:
 3. Compare performance with/without skew handling
 """
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as spark_sum, count, when, concat, lit, rand, split, explode, array
+import os
+import sys
 import time
 
-spark = SparkSession.builder \
-    .appName("Data Skew Handling Exercise") \
-    .getOrCreate()
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table  # noqa: F401
+
+from pyspark.sql.functions import col, sum as spark_sum, count, when, concat, lit, rand, split, explode, array
+
+spark = get_spark("Data Skew Handling Exercise")
 
 # Exercise 1: Create Skewed Data
 print("=" * 50)

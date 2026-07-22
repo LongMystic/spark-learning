@@ -105,5 +105,5 @@
 
 ---
 
-**Progress**: Day X/30+ ✅
+**Progress**: Day X/40 ✅
 

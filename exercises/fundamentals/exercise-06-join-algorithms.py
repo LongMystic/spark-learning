@@ -9,13 +9,16 @@ Instructions:
 4. Handle join skew
 """
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, broadcast
+import os
+import sys
 import time
 
-spark = SparkSession.builder \
-    .appName("Join Algorithms Exercise") \
-    .getOrCreate()
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table
+
+from pyspark.sql.functions import col, broadcast
+
+spark = get_spark("Join Algorithms Exercise")
 
 # Exercise 1: Compare Join Strategies
 print("=" * 50)
@@ -73,14 +76,13 @@ print("\n" + "=" * 50)
 print("Exercise 3: Filter Before Join")
 print("=" * 50)
 
-# TODO: Replace with your actual table paths
-df1 = spark.read.parquet("table1_path/")
-df2 = spark.read.parquet("table2_path/")
+df1 = read_table(spark, "transactions")
+df2 = read_table(spark, "customers")
 
 # Bad: Join then filter
 print("--- Join Then Filter ---")
 start = time.time()
-result_bad = df1.join(df2, "id").filter(col("status") == "active")
+result_bad = df1.join(df2, "customer_id").filter(col("status") == "active")
 # result_bad.count()  # Uncomment to execute
 time_bad = time.time() - start
 print(f"  Execution time: {time_bad:.2f}s")
@@ -90,7 +92,7 @@ print("  Shuffles all data, then filters")
 print("\n--- Filter Then Join ---")
 start = time.time()
 result_good = df1.filter(col("status") == "active").join(
-    df2.filter(col("status") == "active"), "id"
+    df2.filter(col("segment") == "enterprise"), "customer_id"
 )
 # result_good.count()  # Uncomment to execute
 time_good = time.time() - start
@@ -107,7 +109,7 @@ print("=" * 50)
 # Bad: Join all columns
 print("--- Join All Columns ---")
 start = time.time()
-result_bad = df1.join(df2, "id")
+result_bad = df1.join(df2, "customer_id")
 # result_bad.count()  # Uncomment to execute
 time_bad = time.time() - start
 print(f"  Execution time: {time_bad:.2f}s")
@@ -115,8 +117,8 @@ print(f"  Execution time: {time_bad:.2f}s")
 # Good: Select needed columns first
 print("\n--- Select Needed Columns First ---")
 start = time.time()
-result_good = df1.select("id", "col1", "col2").join(
-    df2.select("id", "col3"), "id"
+result_good = df1.select("customer_id", "amount", "quantity").join(
+    df2.select("customer_id", "segment"), "customer_id"
 )
 # result_good.count()  # Uncomment to execute
 time_good = time.time() - start
@@ -138,14 +140,12 @@ print("Cost-Based Optimization Enabled:")
 print(f"  CBO Enabled: {spark.conf.get('spark.sql.cbo.enabled')}")
 print(f"  Join Reorder: {spark.conf.get('spark.sql.cbo.joinReorder.enabled')}")
 
-# TODO: Collect statistics first
-# spark.sql("ANALYZE TABLE table1 COMPUTE STATISTICS FOR ALL COLUMNS")
-# spark.sql("ANALYZE TABLE table2 COMPUTE STATISTICS FOR ALL COLUMNS")
+# TODO: Collect statistics first (see Day 28 for CBO + ANALYZE TABLE)
 
-df3 = spark.read.parquet("table3_path/")
+df3 = read_table(spark, "products")
 
 # Multiple joins - Catalyst will optimize order
-result = df1.join(df2, "id").join(df3, "id")
+result = df1.join(df2, "customer_id").join(df3, "product_id")
 result.explain()
 print("  Catalyst optimizer chooses join order based on statistics")
 

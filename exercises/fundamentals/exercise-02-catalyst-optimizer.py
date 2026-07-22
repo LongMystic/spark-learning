@@ -8,31 +8,30 @@ Instructions:
 3. Measure performance differences
 """
 
-from pyspark.sql import SparkSession
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from common.spark_session import get_spark, read_table
+
 from pyspark.sql.functions import col, sum as spark_sum
 
-spark = SparkSession.builder \
-    .appName("Catalyst Optimizer Exercise") \
-    .getOrCreate()
+spark = get_spark("Catalyst Optimizer Exercise")
 
 # Exercise 1: Compare Logical vs Optimized Plans
 print("=" * 50)
 print("Exercise 1: Plan Comparison")
 print("=" * 50)
 
-df = spark.read.parquet("your_table_path/")
+df = read_table(spark, "transactions")
+df.createOrReplaceTempView("transactions")
 
 # Query with nested structure
-result = df.filter(col("age") > 25).select("name", "age", "salary")
+result = df.filter(col("amount") > 25).select("customer_id", "amount", "quantity")
 
-print("\n=== Logical Plan ===")
-print(result.queryExecution.logical)
-
-print("\n=== Optimized Logical Plan ===")
-print(result.queryExecution.optimizedPlan)
-
-print("\n=== Physical Plan ===")
-print(result.queryExecution.executedPlan)
+# Note: in PySpark the plans live under result._jdf.queryExecution().*
+print("\n=== Plans (logical -> optimized -> physical) ===")
+result.explain(mode="extended")
 
 # Exercise 2: Predicate Pushdown Analysis
 print("\n" + "=" * 50)
@@ -42,8 +41,8 @@ print("=" * 50)
 # Query that should benefit from predicate pushdown
 query = """
 SELECT * FROM (
-    SELECT * FROM large_table
-) WHERE status = 'active' AND age > 25
+    SELECT * FROM transactions
+) WHERE status = 'active' AND amount > 25
 """
 
 result2 = spark.sql(query)
@@ -57,9 +56,9 @@ print("Exercise 3: Column Pruning")
 print("=" * 50)
 
 # Select only needed columns
-result3 = df.select("id", "name").filter(col("status") == "active")
+result3 = df.select("customer_id", "amount").filter(col("status") == "active")
 
-print("\nExecution Plan (should only read id, name, status):")
+print("\nExecution Plan (should only read customer_id, amount, status):")
 result3.explain(extended=True)
 
 # Exercise 4: Enable/Disable Optimizations
@@ -70,14 +69,14 @@ print("=" * 50)
 # Disable predicate pushdown
 spark.conf.set("spark.sql.optimizer.predicatePushdown.enabled", "false")
 
-result4 = df.filter(col("age") > 25)
+result4 = df.filter(col("amount") > 25)
 print("\nPlan WITHOUT predicate pushdown:")
 result4.explain(extended=True)
 
 # Re-enable
 spark.conf.set("spark.sql.optimizer.predicatePushdown.enabled", "true")
 
-result5 = df.filter(col("age") > 25)
+result5 = df.filter(col("amount") > 25)
 print("\nPlan WITH predicate pushdown:")
 result5.explain(extended=True)
 
@@ -90,14 +89,14 @@ print("=" * 50)
 spark.conf.set("spark.sql.cbo.enabled", "true")
 spark.conf.set("spark.sql.cbo.joinReorder.enabled", "true")
 
-# TODO: Collect statistics first
-# spark.sql("ANALYZE TABLE table_name COMPUTE STATISTICS FOR ALL COLUMNS")
+# TODO: Collect statistics first (works on managed tables; see Day 28)
+# spark.sql("ANALYZE TABLE transactions COMPUTE STATISTICS FOR ALL COLUMNS")
 
 # Join query
-df1 = spark.read.parquet("table1_path/")
-df2 = spark.read.parquet("table2_path/")
+df1 = read_table(spark, "transactions")
+df2 = read_table(spark, "customers")
 
-result6 = df1.join(df2, "id")
+result6 = df1.join(df2, "customer_id")
 
 print("\nExecution Plan with CBO:")
 result6.explain(extended=True)
