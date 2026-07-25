@@ -74,16 +74,18 @@ print("=" * 50)
 
 # NOTE: executor.memory/cores/instances only take effect at submit time on a
 # real cluster. Locally they are ignored, but the calculation above is exactly
-# what you'd pass to spark-submit --executor-memory / --num-executors on YARN.
+# what you'd pass to spark-submit --master k8s:// (or a SparkApplication CRD) on
+# Kubernetes. On K8S, executor-cores maps to spark.executor.cores (task slots)
+# plus spark.kubernetes.executor.request.cores (what the scheduler reserves).
 spark = get_spark("Configuration Tuning Exercise", extra_conf={
     "spark.default.parallelism": str(optimal_config['default_parallelism']),
     "spark.sql.shuffle.partitions": str(optimal_config['shuffle_partitions']),
 })
 
-print("\nCalculated cluster configuration (pass these to spark-submit on YARN):")
-print(f"  --executor-memory {optimal_config['executor_memory']}")
-print(f"  --executor-cores  {optimal_config['executor_cores']}")
-print(f"  --num-executors   {optimal_config['executor_instances']}")
+print("\nCalculated cluster configuration (pass these to spark-submit on Kubernetes):")
+print(f"  --conf spark.executor.memory={optimal_config['executor_memory']}")
+print(f"  --conf spark.executor.cores={optimal_config['executor_cores']}")
+print(f"  --conf spark.executor.instances={optimal_config['executor_instances']}")
 print(f"  spark.sql.shuffle.partitions = {spark.conf.get('spark.sql.shuffle.partitions')}")
 
 # Exercise 3: Compare Different Configurations

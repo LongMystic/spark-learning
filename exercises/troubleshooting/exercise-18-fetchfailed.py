@@ -41,14 +41,15 @@ print("""
 
   Root-cause checklist:
     1. Which MAP-side executor is gone? (Executors tab, around the failure time)
-    2. Why did it die? OOM / YARN kill / long GC / disk full on spark.local.dir.
-    3. Dynamic allocation on WITHOUT external shuffle service? -> enable
-       spark.shuffle.service.enabled=true
+    2. Why did it die? OOM / pod OOMKilled (exit 137) / long GC / disk full on spark.local.dir.
+    3. Dynamic allocation on? K8S has NO external shuffle service, so enable
+       spark.dynamicAllocation.shuffleTracking.enabled=true
+       (or use executor decommissioning with block migration).
     4. Right-size partitions (~100-200MB each) and/or enable AQE to coalesce.
 """)
 print("Analysis Questions")
 print("1. Why is FetchFailed a *symptom* rather than a root cause?")
-print("2. Why must dynamic allocation be paired with the external shuffle service?")
+print("2. On K8S (no external shuffle service), why must dynamic allocation use shuffle tracking?")
 print("3. What per-partition shuffle size are you aiming for?")
 
 spark.stop()

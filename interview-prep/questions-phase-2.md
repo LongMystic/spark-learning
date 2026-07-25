@@ -1,14 +1,16 @@
 # Interview Questions — Performance Tuning (Phase 2)
 
 <details><summary>1. How do you size executors for a cluster?</summary>
-Reserve ~1 core + RAM for OS/NodeManager per node, target ~2–3 executors/node, ~5 cores
-each (beyond ~5, HDFS throughput drops), split remaining RAM per executor, add 10–20%
-memoryOverhead. It's a method, not a magic number.</details>
+Reserve ~1 core + RAM for OS/kubelet (system-reserved/kube-reserved) per node so you size
+against the node's *allocatable*, target ~2–3 executor pods/node, ~5 cores each (beyond ~5,
+object-store (s3a) throughput drops), split remaining RAM per executor, add 10–20%
+memoryOverhead (the pod request=limit is heap + overhead). It's a method, not a magic number.</details>
 
 <details><summary>2. Static vs dynamic allocation?</summary>
 Static: fixed executors — predictable, dedicated jobs. Dynamic: scales executors with
-demand — good for bursty/shared clusters; **requires the external shuffle service** so
-scaled-down executors don't lose shuffle files.</details>
+demand — good for bursty/shared clusters; on K8S there's no external shuffle service, so it
+**requires shuffle tracking** (`spark.dynamicAllocation.shuffleTracking.enabled=true`) so
+scaled-down executors don't lose shuffle files (or decommission-with-migration / a shuffle PVC).</details>
 
 <details><summary>3. How do you detect and fix data skew?</summary>
 Detect: max ≫ median task time, one huge shuffle-read task. Fix: AQE skew join, salting
@@ -23,9 +25,10 @@ coalescing right-size it.</details>
 Data written to disk when execution memory is exhausted (Spill Memory/Disk in the UI).
 Fix: more partitions, more/execution memory, reduce per-task data, fix skew.</details>
 
-<details><summary>6. Heap OOM vs "container killed by YARN"?</summary>
+<details><summary>6. Heap OOM vs pod OOMKilled (exit 137)?</summary>
 Heap OOM → JVM heap too small (more partitions / fix skew / more heap).
-Container killed → off-heap/overhead exceeded (raise `memoryOverhead`; common in PySpark).</details>
+Pod OOMKilled (exit 137) → the pod's RSS exceeded its memory limit, i.e. off-heap/overhead
+exceeded (raise `memoryOverhead`; common in PySpark).</details>
 
 <details><summary>7. Why filter and project before joins?</summary>
 Less data enters the shuffle → smaller map output, less network, faster reduce. Catalyst

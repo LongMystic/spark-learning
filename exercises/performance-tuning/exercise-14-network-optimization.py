@@ -202,7 +202,7 @@ Key Metrics to Monitor:
 Tools:
 - Spark UI (Stages, Tasks tabs)
 - Network monitoring tools
-- Cluster monitoring (Ganglia, Prometheus)
+- Cluster monitoring (Prometheus + Grafana; Spark's Prometheus servlet)
 """)
 
 # Exercise 9: Reduce Network Usage
@@ -237,16 +237,18 @@ print("Exercise 10: Network Topology")
 print("=" * 50)
 
 print("""
-For On-Premise Clusters:
-1. Understand network layout
-2. Enable rack awareness (if available)
-3. Optimize for network topology
-4. Monitor cross-rack traffic
+For On-Premise Kubernetes Clusters:
+1. Understand node/network layout (label nodes by rack/zone)
+2. Steer pods with topology spread constraints / pod affinity via a pod template
+     --conf spark.kubernetes.executor.podTemplateFile=/opt/spark/pod-template.yaml
+3. Optimize for network topology where it still matters (executor-to-executor shuffle)
+4. Monitor cross-node/cross-rack traffic
 
-YARN Rack Awareness:
-- Prefers same rack
-- Reduces cross-rack traffic
-- Better network utilization
+Kubernetes topology vs data locality:
+- Node labels + topology spread constraints keep related pods close.
+- With object storage (s3a/MinIO), compute and storage are DISAGGREGATED, so
+  read-side data locality matters far less than it did on HDFS — the shuffle
+  network between executor pods is what you tune here.
 """)
 
 print("\n" + "=" * 50)

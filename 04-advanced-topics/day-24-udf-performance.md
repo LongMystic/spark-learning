@@ -61,7 +61,7 @@ spark.conf.set("spark.sql.execution.arrow.maxRecordsPerBatch", "10000")
 
 ## 💡 Key Insights for On-Premise
 ### 1. Pandas UDFs need pyarrow on every executor
-The cluster's Python environment (all NodeManagers) must have compatible `pyarrow`/`pandas`. Version mismatches between driver and executors are a classic on-prem failure. Ship a conda/venv archive with `--archives` if needed.
+Every executor's Python environment must have compatible `pyarrow`/`pandas`. Version mismatches between driver and executors are a classic on-prem failure. On Kubernetes you **bake `pyspark`/`pyarrow`/`pandas` into the container image** and point driver and executors at the *same* image (`spark.kubernetes.container.image`), so every pod is byte-for-byte identical — this actually SOLVES the driver/executor version-skew problem more cleanly than YARN did, because there is no per-node Python to drift. (Shipping a conda/venv archive with `--archives` still works if you must override the image's env.)
 
 ### 2. UDFs inflate memoryOverhead
 Python workers live off-heap. Heavy Pandas UDFs → raise `spark.executor.memoryOverhead` (Day 16).
@@ -91,7 +91,7 @@ Python workers live off-heap. Heavy Pandas UDFs → raise `spark.executor.memory
 
 ### Issue 1: Pandas UDF errors on executors only
 **Symptom**: works on driver, fails distributed.
-**Solution**: pyarrow/pandas missing or mismatched on executors — align the cluster Python env.
+**Solution**: pyarrow/pandas missing or mismatched on executors — rebuild the container image with the right versions and use that **same image** for driver and executors so their Python envs are identical.
 
 ### Issue 2: applyInPandas OOMs
 **Symptom**: one group too big for memory.

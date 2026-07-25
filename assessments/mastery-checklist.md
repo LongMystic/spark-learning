@@ -25,7 +25,7 @@ of "done" for the 40-day path — deeper than finishing the reading.
 - [ ] Classify any failure into memory / shuffle / serialization / data / resource
 - [ ] Read a stack trace to the true `Caused by:` and find the responsible task/executor
 - [ ] Tell driver OOM from executor OOM and apply the right fix
-- [ ] Recognize "container killed by YARN" = overhead, not heap
+- [ ] Recognize a pod **OOMKilled** (exit 137) = overhead/off-heap, not heap
 - [ ] Distinguish transient vs deterministic task failures
 - [ ] Trace a `FetchFailed` to its real (upstream executor-loss) cause
 - [ ] Fix a "Task not serializable" and replace a slow UDF

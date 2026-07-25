@@ -2,7 +2,7 @@
 
 ## 🎯 Overview
 
-This section covers comprehensive Spark performance tuning techniques for on-premise Hadoop clusters.
+This section covers comprehensive Spark performance tuning techniques for on-premise Kubernetes clusters (Spark-on-K8S, MinIO/S3 storage via the `s3a://` scheme).
 
 ## 📚 Topics Covered
 
@@ -13,9 +13,9 @@ This section covers comprehensive Spark performance tuning techniques for on-pre
    - Shuffle configuration
 
 2. **Resource Allocation**
-   - YARN integration
-   - Dynamic allocation
-   - Resource negotiation
+   - Kubernetes integration (driver pod requests executor pods from the API server)
+   - Dynamic allocation (with shuffle tracking — no external shuffle service on K8S)
+   - Resource negotiation (pod requests/limits, namespace ResourceQuota)
 
 3. **Data Skew Handling**
    - Detection techniques

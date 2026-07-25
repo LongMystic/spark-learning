@@ -21,7 +21,7 @@ Biggest wins usually come from: eliminating full scans (pruning/DPP), fixing ske
 | Layer | Tool | Watch |
 |-------|------|-------|
 | Per-app | Spark UI / History Server | stages, skew, spill, SQL metrics |
-| Cluster | YARN RM UI / Grafana | queue utilization, pending containers |
+| Cluster | kubectl top / Grafana (Prometheus) | namespace quota utilization, pending pods |
 | Metrics | Spark metrics sink → Prometheus/Graphite | executor mem, GC, task rates |
 | Pipeline | Airflow | SLAs, retries, DAG duration |
 | Data | dbt tests / DQ gates | freshness, quality |
@@ -41,7 +41,7 @@ Biggest wins usually come from: eliminating full scans (pruning/DPP), fixing ske
 
 ## 💡 Key Insights for On-Premise
 ### 1. Idle executors are pure waste
-Fixed executors sitting idle between stages hold cores others could use. Dynamic allocation + external shuffle service (Day 18) returns them — one of the biggest shared-cluster efficiency wins.
+Fixed executor pods sitting idle between stages hold cores others could use. Dynamic allocation + shuffle tracking (Day 18; no external shuffle service on K8S) returns them — one of the biggest shared-cluster efficiency wins.
 ### 2. Alert on leading indicators
 Don't wait for the SLA breach. Alert on **data-volume growth**, **rising GC/spill**, and **stage-time trend** — the causes that *will* breach the SLA next month (ties to Day 21 recurrence prevention).
 

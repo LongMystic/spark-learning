@@ -112,24 +112,52 @@ spark.conf.set("spark.shuffle.io.numConnectionsPerPeer", "1")  # Default: 1
 
 ### 4. Network Topology Awareness
 
-**For On-Premise Clusters:**
-- Understand network layout
-- Rack awareness (if available)
-- Optimize for network topology
+**For On-Premise Kubernetes Clusters:**
+- Understand the node/network layout and label nodes by rack/zone
+- Steer pods with **topology spread constraints** / **pod affinity** instead of YARN rack awareness
+- Optimize for the executor-to-executor shuffle network
 
-**YARN Rack Awareness:**
-```xml
-<!-- yarn-site.xml -->
-<property>
-  <name>yarn.resourcemanager.scheduler.class</name>
-  <value>org.apache.hadoop.yarn.server.resourcemanager.scheduler.capacity.CapacityScheduler</value>
-</property>
+**Kubernetes Topology (replaces YARN rack awareness):**
+On YARN the scheduler used rack awareness to keep tasks near their HDFS blocks.
+On Kubernetes you express topology through a **pod template** — node labels plus
+topology spread constraints or pod affinity — wired in with
+`spark.kubernetes.executor.podTemplateFile`:
+```yaml
+# pod-template.yaml (referenced by spark.kubernetes.executor.podTemplateFile)
+apiVersion: v1
+kind: Pod
+spec:
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone   # spread executors across zones/racks
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels: { spark-role: executor }
+  affinity:
+    podAffinity:                                  # optional: co-locate executors of one app
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 50
+          podAffinityTerm:
+            topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels: { spark-role: executor }
+```
+```bash
+spark-submit \
+  --master k8s://https://<api-server>:6443 \
+  --conf spark.kubernetes.executor.podTemplateFile=/opt/spark/pod-template.yaml \
+  ...
 ```
 
 **Benefits:**
-- Prefers same rack
-- Reduces cross-rack traffic
+- Spreads (or co-locates) executor pods deliberately across racks/zones
+- Reduces cross-rack traffic for the shuffle
 - Better network utilization
+
+**Data locality caveat:** with **object storage (s3a/MinIO)**, compute and storage
+are **disaggregated** — every read crosses the network regardless of node, so
+read-side rack/data locality matters far less than it did on HDFS. What you are
+really tuning here is the **executor-to-executor shuffle** network, not block locality.
 
 ### 5. Broadcast Optimization
 
@@ -213,7 +241,7 @@ spark.conf.set("spark.shuffle.io.connectionTimeout", "60s")
 **Tools:**
 - Spark UI (Stages, Tasks tabs)
 - Network monitoring tools
-- Cluster monitoring (Ganglia, Prometheus)
+- Cluster monitoring (Prometheus + Grafana; Spark's Prometheus servlet)
 
 ## 🎯 Practical Exercises
 
@@ -409,27 +437,38 @@ spark.conf.set("spark.sql.shuffle.partitions", "200")
 
 **Solution:**
 ```python
-# Schedule jobs to avoid overlap
-# Use queue management in YARN
-spark.conf.set("spark.yarn.queue", "production")
+# Isolate tenants into their own namespace with a ResourceQuota so concurrent
+# jobs don't starve each other's network/CPU.
+spark.conf.set("spark.kubernetes.namespace", "production")
 
 # Or reduce shuffle data size
 # (column pruning, filtering, compression)
 ```
 
-### Issue 5: Cross-Rack Traffic
+### Issue 5: Cross-Rack / Cross-Node Shuffle Traffic
 
 **Symptom**: High network usage, slow performance
 
-**Root Cause**: Data and compute on different racks
+**Root Cause**: Executor pods spread across racks so shuffle blocks cross the fabric
 
 **Solution:**
+```yaml
+# Steer executor pods with a pod template (spark.kubernetes.executor.podTemplateFile):
+#   - topology spread constraints across topology.kubernetes.io/zone
+#   - pod affinity on kubernetes.io/hostname to co-locate an app's executors
+spec:
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 50
+          podAffinityTerm:
+            topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels: { spark-role: executor }
+```
 ```python
-# Enable rack awareness in YARN
-# (Cluster configuration)
-
-# Or optimize data placement
-# Co-locate data and compute when possible
+# Note: with s3a/MinIO object storage, READ locality is moot (compute/storage are
+# disaggregated) — this only helps the executor-to-executor shuffle path.
 ```
 
 ## 📝 Key Takeaways

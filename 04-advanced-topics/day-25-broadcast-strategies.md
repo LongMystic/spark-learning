@@ -46,7 +46,7 @@ q.explain()      # look for: AdaptiveSparkPlan, AQEShuffleRead (coalesced/skewed
 Auto-broadcast uses the optimizer's **size estimate**. Without stats (Day 28) the estimate can be wrong — a "small" table may not broadcast, or a big one may be attempted. `ANALYZE TABLE` improves the estimate; the explicit `broadcast()` hint overrides it.
 
 ### 2. AQE and the number of output files
-Coalescing post-shuffle partitions also reduces the number of output files on write — a free small-file win for on-prem HDFS.
+Coalescing post-shuffle partitions also reduces the number of output files on write — a free small-file win for on-prem object storage (s3a/MinIO), where many tiny objects hurt LIST/GET throughput just as small files hurt HDFS.
 
 ## 🎯 Practical Exercises
 

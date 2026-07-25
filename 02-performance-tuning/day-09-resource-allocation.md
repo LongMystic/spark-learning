@@ -1,69 +1,74 @@
-# Day 9: Resource Allocation and YARN Integration
+# Day 9: Resource Allocation and Kubernetes Integration
 
 ## 🎯 Learning Objectives
-- Understand YARN resource allocation
-- Master dynamic allocation in Spark
-- Learn resource negotiation strategies
-- Optimize resource usage for on-premise clusters
-- Handle resource contention and scheduling
+- Understand how Spark requests resources from Kubernetes
+- Master dynamic allocation on K8S (shuffle tracking — there is no external shuffle service)
+- Learn how pods, requests, and limits map to executors
+- Optimize resource usage for on-premise Kubernetes clusters
+- Handle resource contention with namespaces, quotas, and scheduling
 
 ## 📚 Core Concepts
 
-### 1. YARN Resource Model
+### 1. Kubernetes Resource Model
 
-**YARN Components:**
-- **ResourceManager**: Global resource manager
-- **NodeManager**: Per-node resource manager
-- **ApplicationMaster**: Per-application coordinator
-- **Container**: Resource allocation unit
+**Kubernetes Components:**
+- **API server + kube-scheduler**: the cluster-wide brain that places pods on nodes (the role YARN's ResourceManager played)
+- **kubelet**: the per-node agent that runs containers and reports capacity (the role of YARN's NodeManager)
+- **Driver pod**: in cluster mode the Spark driver runs as a pod and requests executor pods directly from the API server (the role of YARN's ApplicationMaster)
+- **Pod**: the unit of resource allocation — one driver pod + N executor pods (the analog of a YARN container)
 
 **Resource Types:**
-- **Memory**: Measured in MB/GB
-- **CPU**: Measured in virtual cores (vcores)
+- **Memory**: bytes/MiB/GiB, expressed as pod `requests` (reserved) and `limits` (hard cap)
+- **CPU**: millicores/cores, e.g. `500m` or `5`
 
 **Resource Allocation:**
 ```python
-# Spark requests resources from YARN
-# YARN allocates containers
-# Spark runs executors in containers
+# Spark's driver pod calls the Kubernetes API
+# The scheduler places executor pods on nodes with free capacity
+# Each executor runs in its own pod, sized by requests/limits
 ```
 
 ### 2. Static vs Dynamic Allocation
 
 **Static Allocation:**
 ```python
-# Fixed number of executors
+# Fixed number of executor pods
 spark.conf.set("spark.executor.instances", "30")
 spark.conf.set("spark.dynamicAllocation.enabled", "false")
 ```
 
 **Dynamic Allocation:**
 ```python
-# Executors allocated based on demand
+# Executor pods created/removed based on demand.
+# On K8S there is NO external shuffle service, so you MUST enable shuffle tracking
+# to avoid throwing away shuffle data when an executor is removed.
 spark.conf.set("spark.dynamicAllocation.enabled", "true")
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
 spark.conf.set("spark.dynamicAllocation.minExecutors", "5")
 spark.conf.set("spark.dynamicAllocation.maxExecutors", "50")
 spark.conf.set("spark.dynamicAllocation.initialExecutors", "10")
 ```
 
-### 3. YARN Configuration
+### 3. Kubernetes Configuration
 
-**Key YARN Settings:**
-- `yarn.nodemanager.resource.memory-mb`: Memory per node
-- `yarn.nodemanager.resource.cpu-vcores`: Cores per node
-- `yarn.scheduler.maximum-allocation-mb`: Max container memory
-- `yarn.scheduler.maximum-allocation-vcores`: Max container cores
+**Key K8S-side settings (platform team owns these):**
+- Node **allocatable** memory/CPU: node capacity minus kubelet/system reservations (`--kube-reserved`, `--system-reserved`) — the analog of `yarn.nodemanager.resource.memory-mb`
+- **ResourceQuota** per namespace: caps a tenant's total requests/limits — the analog of a scheduler queue's capacity
+- **LimitRange** per namespace: caps a single pod's size — the analog of `yarn.scheduler.maximum-allocation-*`
 
-**Spark-YARN Integration:**
-```python
-# Submit to YARN
+**Spark-Kubernetes Integration:**
+```bash
+# Submit to Kubernetes
 spark-submit \
-  --master yarn \
+  --master k8s://https://<api-server>:6443 \
   --deploy-mode cluster \
-  --executor-memory 14g \
-  --executor-cores 5 \
-  --num-executors 30 \
-  app.py
+  --conf spark.kubernetes.namespace=spark-jobs \
+  --conf spark.kubernetes.container.image=<registry>/spark:3.5.1 \
+  --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
+  --conf spark.executor.memory=14g \
+  --conf spark.executor.cores=5 \
+  --conf spark.executor.instances=30 \
+  local:///opt/spark/work-dir/app.py
 ```
 
 ## 🔍 Deep Dive: Dynamic Allocation
@@ -72,13 +77,20 @@ spark-submit \
 
 **Allocation Process:**
 1. **Initial**: Start with `initialExecutors`
-2. **Scale Up**: Add executors when tasks are pending
-3. **Scale Down**: Remove idle executors after timeout
+2. **Scale Up**: Add executor pods when tasks are pending
+3. **Scale Down**: Remove idle executor pods after timeout
 4. **Bounds**: Respect `minExecutors` and `maxExecutors`
+
+**Why shuffle tracking is mandatory on K8S:** On YARN, the NodeManager ran an *external
+shuffle service* that kept serving an executor's shuffle files after the executor died,
+so dynamic allocation could freely remove idle executors. **Kubernetes has no external
+shuffle service.** Instead, `spark.dynamicAllocation.shuffleTracking.enabled=true` makes
+Spark keep an executor alive as long as it still holds shuffle blocks a later stage needs.
 
 **Configuration:**
 ```python
 spark.conf.set("spark.dynamicAllocation.enabled", "true")
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
 
 # Executor bounds
 spark.conf.set("spark.dynamicAllocation.minExecutors", "5")
@@ -87,18 +99,23 @@ spark.conf.set("spark.dynamicAllocation.initialExecutors", "10")
 
 # Scaling behavior
 spark.conf.set("spark.dynamicAllocation.executorIdleTimeout", "60s")
-spark.conf.set("spark.dynamicAllocation.cachedExecutorIdleTimeout", "infinity")
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.timeout", "30m")  # keep shuffle-holders this long
 spark.conf.set("spark.dynamicAllocation.schedulerBacklogTimeout", "1s")
 spark.conf.set("spark.dynamicAllocation.sustainedSchedulerBacklogTimeout", "5s")
 ```
+
+> Alternative to shuffle tracking: **executor decommissioning with block migration**
+> (`spark.decommission.enabled=true`, `spark.storage.decommission.shuffleBlocks.enabled=true`)
+> moves shuffle/cache blocks off an executor before it's removed. Or mount a PVC for shuffle
+> data so it survives pod restarts.
 
 ### When to Use Dynamic Allocation
 
 **Good For:**
 - Variable workloads
 - Multiple concurrent applications
-- Resource sharing
-- Cost optimization
+- Resource sharing across namespaces
+- Cost / node-utilization optimization (works well with the cluster autoscaler)
 
 **Not Good For:**
 - Predictable, consistent workloads
@@ -114,14 +131,14 @@ spark.conf.set("spark.dynamicAllocation.sustainedSchedulerBacklogTimeout", "5s")
 
 **Scale Down Triggers:**
 - Executor idle for `executorIdleTimeout`
-- No cached data (if `cachedExecutorIdleTimeout` not set)
+- No active shuffle blocks (shuffle tracking) and no cached data
 
 **Example:**
 ```python
-# Job starts with 10 executors
-# Tasks queue up → scales to 30 executors
-# Tasks complete → scales down to 5 executors (min)
-# Cached data keeps executors alive
+# Job starts with 10 executor pods
+# Tasks queue up → scheduler creates pods up to 30
+# Tasks complete → idle pods deleted down to 5 (min)
+# Pods holding shuffle blocks are kept until shuffleTracking.timeout
 ```
 
 ## 💡 Resource Allocation Strategies
@@ -133,12 +150,13 @@ spark.conf.set("spark.dynamicAllocation.sustainedSchedulerBacklogTimeout", "5s")
 **Configuration:**
 ```python
 spark.conf.set("spark.dynamicAllocation.enabled", "true")
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
 spark.conf.set("spark.dynamicAllocation.minExecutors", "5")
 spark.conf.set("spark.dynamicAllocation.maxExecutors", "30")
 spark.conf.set("spark.dynamicAllocation.initialExecutors", "10")
 ```
 
-**Use Case**: Shared cluster, multiple users
+**Use Case**: Shared cluster, multiple teams/namespaces
 
 ### 2. Aggressive Allocation
 
@@ -147,12 +165,13 @@ spark.conf.set("spark.dynamicAllocation.initialExecutors", "10")
 **Configuration:**
 ```python
 spark.conf.set("spark.dynamicAllocation.enabled", "true")
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
 spark.conf.set("spark.dynamicAllocation.minExecutors", "20")
 spark.conf.set("spark.dynamicAllocation.maxExecutors", "100")
 spark.conf.set("spark.dynamicAllocation.initialExecutors", "50")
 ```
 
-**Use Case**: Dedicated resources, performance critical
+**Use Case**: Dedicated node pool, performance critical
 
 ### 3. Static Allocation
 
@@ -168,76 +187,82 @@ spark.conf.set("spark.executor.instances", "30")
 
 ### 4. Hybrid Approach
 
-**Strategy**: Static for base, dynamic for peaks
+**Strategy**: Static base, dynamic for peaks
 
 **Configuration:**
 ```python
 spark.conf.set("spark.dynamicAllocation.enabled", "true")
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
 spark.conf.set("spark.dynamicAllocation.minExecutors", "20")  # Base load
 spark.conf.set("spark.dynamicAllocation.maxExecutors", "50")  # Peak load
 ```
 
-## 🔍 Deep Dive: YARN Integration
+## 🔍 Deep Dive: Kubernetes Integration
 
-### Container Allocation
+### Pod Sizing
 
-**Container Size:**
+**Executor pod size:**
 ```python
-# Executor memory + overhead
-executor_memory = 14 * 1024  # 14GB in MB
-executor_memoryOverhead = 2 * 1024  # 2GB in MB
-container_memory = executor_memory + executor_memoryOverhead  # 16GB
+# Pod memory request == limit == executor memory + overhead.
+executor_memory = 14 * 1024        # 14GB heap, in MB
+executor_memoryOverhead = 2 * 1024 # 2GB off-heap + Python (PySpark!), in MB
+pod_memory = executor_memory + executor_memoryOverhead  # 16GB pod memory limit
 
-# Executor cores
-executor_cores = 5
-container_vcores = executor_cores
+# Executor CPU
+executor_cores = 5                 # task slots inside the pod
+# spark.kubernetes.executor.request.cores = "5"  # what the scheduler reserves
+# spark.kubernetes.executor.limit.cores   = "5"  # hard CPU cap (optional)
 ```
 
-**YARN Constraints:**
-- Container memory must be ≤ `yarn.scheduler.maximum-allocation-mb`
-- Container vcores must be ≤ `yarn.scheduler.maximum-allocation-vcores`
-- Total resources ≤ node capacity
+`spark.kubernetes.memoryOverheadFactor` (default 0.1) sets the overhead automatically when
+you don't specify `spark.executor.memoryOverhead`. **Bump it for PySpark** — Python runs
+outside the JVM heap.
+
+**Kubernetes constraints:**
+- Pod memory/CPU request must fit a node's **allocatable** capacity
+- Pod size must be ≤ the namespace **LimitRange** max
+- Namespace total ≤ its **ResourceQuota**
 
 ### Resource Negotiation
 
 **Request Process:**
-1. Spark requests containers from YARN
-2. YARN checks available resources
-3. YARN allocates containers if available
-4. Spark launches executors in containers
-5. Executors register with Spark driver
+1. The driver pod asks the API server to create executor pods with given requests
+2. The kube-scheduler finds nodes with enough free allocatable capacity
+3. Pods are bound to nodes and the kubelet starts the containers
+4. Executors register back with the Spark driver
+5. If no node fits, pods stay **Pending** (analogous to a YARN container waiting on capacity)
 
 **Common Issues:**
-- **Insufficient Resources**: YARN can't allocate requested containers
-- **Resource Fragmentation**: Resources available but not contiguous
-- **Queue Limits**: Queue doesn't have enough capacity
+- **Insufficient Resources**: no node has room → pods stuck `Pending` (and the cluster autoscaler, if present, adds a node)
+- **Quota Exhausted**: namespace `ResourceQuota` reached → pod creation rejected
+- **Pod too large**: request exceeds `LimitRange` max or any single node's allocatable
 
-### Queue Configuration
+### Namespace & Quota Configuration
 
-**YARN Queues:**
-```python
-# Submit to specific queue
+**Namespaces replace YARN queues.** Submit into a namespace:
+```bash
 spark-submit \
-  --master yarn \
-  --queue production \
+  --master k8s://https://<api-server>:6443 \
+  --conf spark.kubernetes.namespace=production \
   app.py
 
 # Or in code
-spark.conf.set("spark.yarn.queue", "production")
+spark.conf.set("spark.kubernetes.namespace", "production")
 ```
 
-**Queue Properties:**
-- **Capacity**: Percentage of cluster resources
-- **Max Capacity**: Maximum percentage (can borrow from other queues)
-- **User Limits**: Per-user resource limits
+**ResourceQuota properties (per namespace):**
+- **requests.cpu / requests.memory**: guaranteed share (≈ queue capacity)
+- **limits.cpu / limits.memory**: burst ceiling (≈ queue max-capacity)
+- **pods**: cap on concurrent pods (per-tenant limit)
 
 ## 🎯 Practical Exercises
 
 ### Exercise 1: Configure Dynamic Allocation
 
 ```python
-# 1. Enable dynamic allocation
+# 1. Enable dynamic allocation (+ shuffle tracking, required on K8S)
 spark.conf.set("spark.dynamicAllocation.enabled", "true")
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
 
 # 2. Set bounds
 spark.conf.set("spark.dynamicAllocation.minExecutors", "5")
@@ -245,12 +270,12 @@ spark.conf.set("spark.dynamicAllocation.maxExecutors", "30")
 spark.conf.set("spark.dynamicAllocation.initialExecutors", "10")
 
 # 3. Run a workload
-df = spark.read.parquet("large_table/")
+df = spark.read.parquet("s3a://warehouse/large_table/")
 result = df.groupBy("key").agg(sum("amount"))
 
-# 4. Monitor in Spark UI:
-#    - Executors tab: Watch executor count change
-#    - Jobs tab: See scaling behavior
+# 4. Monitor:
+#    - Spark UI Executors tab: Watch executor count change
+#    - kubectl -n spark-jobs get pods -w : watch executor pods appear/disappear
 ```
 
 ### Exercise 2: Compare Static vs Dynamic
@@ -263,13 +288,14 @@ spark.conf.set("spark.executor.instances", "20")
 
 # Configuration 2: Dynamic
 spark.conf.set("spark.dynamicAllocation.enabled", "true")
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
 spark.conf.set("spark.dynamicAllocation.minExecutors", "5")
 spark.conf.set("spark.dynamicAllocation.maxExecutors", "30")
 # Run same query and measure time
 
 # Compare:
 # - Execution time
-# - Resource utilization
+# - Node/resource utilization
 # - Cost (if applicable)
 ```
 
@@ -277,45 +303,41 @@ spark.conf.set("spark.dynamicAllocation.maxExecutors", "30")
 
 ```python
 # 1. Run job with dynamic allocation
-# 2. Check YARN ResourceManager UI
-#    - Application details
-#    - Container allocations
-#    - Resource usage
-# 3. Check Spark UI
+# 2. Watch Kubernetes:
+#    kubectl -n spark-jobs get pods -w      # pods created/deleted
+#    kubectl top pods -n spark-jobs         # live CPU/mem per pod
+#    kubectl describe pod <executor-pod>    # requests/limits, events, scheduling
+# 3. Check Spark UI (port-forward the driver :4040):
 #    - Executor count over time
 #    - Resource usage per executor
 # 4. Analyze:
-#    - When executors were added/removed
+#    - When executor pods were added/removed
 #    - Resource utilization patterns
 ```
 
-## 💡 Best Practices for On-Premise
+## 💡 Best Practices for On-Premise Kubernetes
 
-### 1. YARN Configuration
+### 1. Node & Namespace Configuration
 
-**NodeManager Settings:**
-```xml
-<!-- yarn-site.xml -->
-<property>
-  <name>yarn.nodemanager.resource.memory-mb</name>
-  <value>49152</value>  <!-- 48GB (64GB - 16GB for OS) -->
-</property>
-<property>
-  <name>yarn.nodemanager.resource.cpu-vcores</name>
-  <value>15</value>  <!-- 16 cores - 1 for OS -->
-</property>
+**Node reservations (kubelet flags, platform team):**
+```
+# On a 64GB / 16-core node, leave headroom for the OS + kubelet:
+--system-reserved=cpu=1,memory=2Gi
+--kube-reserved=cpu=1,memory=2Gi
+# → ~48-60GB and ~14 cores become *allocatable* to pods
 ```
 
-**Scheduler Settings:**
-```xml
-<property>
-  <name>yarn.scheduler.maximum-allocation-mb</name>
-  <value>16384</value>  <!-- 16GB max container -->
-</property>
-<property>
-  <name>yarn.scheduler.maximum-allocation-vcores</name>
-  <value>8</value>  <!-- 8 cores max container -->
-</property>
+**Per-pod cap (LimitRange, analog of yarn.scheduler.maximum-allocation-*):**
+```yaml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: pod-limits
+  namespace: spark-jobs
+spec:
+  limits:
+    - type: Container
+      max: { cpu: "8", memory: 16Gi }   # biggest executor pod allowed
 ```
 
 ### 2. Dynamic Allocation Tuning
@@ -341,88 +363,109 @@ spark.conf.set("spark.dynamicAllocation.enabled", "false")
 spark.conf.set("spark.executor.instances", "20")
 ```
 
-### 3. Queue Management
+### 3. Multi-Tenancy (Namespaces + Quotas)
 
-**Create Queues for:**
-- Production workloads (guaranteed resources)
-- Development workloads (shared resources)
-- ETL pipelines (scheduled resources)
-- Ad-hoc queries (best-effort resources)
+**Create a namespace per tenant class:**
+- Production workloads (guaranteed quota)
+- Development workloads (smaller quota)
+- ETL pipelines (scheduled)
+- Ad-hoc queries (best-effort / low quota)
 
-**Queue Configuration:**
-```xml
-<!-- capacity-scheduler.xml -->
-<queue name="production">
-  <capacity>50</capacity>
-  <maxCapacity>80</maxCapacity>
-</queue>
-<queue name="development">
-  <capacity>30</capacity>
-  <maxCapacity>50</maxCapacity>
-</queue>
+**Namespace + Quota configuration:**
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata: { name: production }
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata: { name: production-quota, namespace: production }
+spec:
+  hard:
+    requests.cpu: "200"        # guaranteed capacity
+    requests.memory: 400Gi
+    limits.cpu: "320"          # burst ceiling (max-capacity)
+    limits.memory: 640Gi
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata: { name: development-quota, namespace: development }
+spec:
+  hard:
+    requests.cpu: "120"
+    requests.memory: 240Gi
 ```
 
 ### 4. Resource Monitoring
 
 **Key Metrics:**
-- Container allocation rate
-- Resource utilization per queue
-- Pending applications
-- Executor lifecycle (add/remove events)
+- Pod scheduling latency / count of `Pending` pods
+- Namespace quota utilization
+- Node allocatable vs used (`kubectl top nodes`)
+- Executor lifecycle (pod add/remove events)
 
 **Tools:**
-- YARN ResourceManager UI
-- Spark UI Executors tab
-- Cluster monitoring tools (Ganglia, Prometheus)
+- `kubectl get/describe/top pods`, Kubernetes Dashboard
+- Spark UI Executors tab (port-forward :4040)
+- Cluster monitoring (Prometheus + Grafana; Spark's Prometheus servlet)
 
 ## 🚨 Common Issues & Solutions
 
-### Issue 1: Executors Not Allocated
+### Issue 1: Executor Pods Not Scheduled
 
-**Symptom**: Job stuck, no executors starting
+**Symptom**: Job stuck, executor pods stay `Pending`
 
 **Root Causes:**
-- Insufficient cluster resources
-- Queue capacity limits
-- YARN configuration issues
+- Insufficient node allocatable capacity
+- Namespace `ResourceQuota` exhausted
+- Pod request exceeds `LimitRange` max or any node's capacity
 
 **Solution:**
 ```python
-# Check available resources
-# Reduce executor size
+# Shrink the pod so it fits available nodes
 spark.conf.set("spark.executor.memory", "8g")  # Instead of 16g
-spark.conf.set("spark.executor.cores", "4")  # Instead of 8
+spark.conf.set("spark.executor.cores", "4")     # Instead of 8
 
-# Or use different queue
-spark.conf.set("spark.yarn.queue", "development")
+# Or submit into a namespace with free quota
+spark.conf.set("spark.kubernetes.namespace", "development")
+```
+```bash
+kubectl -n spark-jobs describe pod <pending-pod>   # Events explain WHY it's pending
 ```
 
-### Issue 2: Slow Executor Allocation
+### Issue 2: Slow Executor Startup
 
-**Symptom**: Long wait time for executors
+**Symptom**: Long wait before executors register
 
-**Root Cause**: Resource contention, many pending applications
+**Root Cause**: Image pulls, node contention, autoscaler adding nodes
 
 **Solution:**
 ```python
-# Increase initial executors
+# Start with more executors so the app isn't starved early
 spark.conf.set("spark.dynamicAllocation.initialExecutors", "20")
 
 # Or use static allocation for critical jobs
 spark.conf.set("spark.dynamicAllocation.enabled", "false")
 spark.conf.set("spark.executor.instances", "30")
 ```
+```
+# Pre-pull the Spark image onto nodes (imagePullPolicy: IfNotPresent) to cut startup.
+```
 
 ### Issue 3: Executors Removed Too Quickly
 
-**Symptom**: Executors removed before next stage
+**Symptom**: Executor pods removed before the next stage
 
-**Root Cause**: Idle timeout too short
+**Root Cause**: Idle timeout too short, or shuffle tracking off
 
 **Solution:**
 ```python
 # Increase idle timeout
 spark.conf.set("spark.dynamicAllocation.executorIdleTimeout", "300s")
+
+# Keep executors holding shuffle blocks (K8S has no external shuffle service!)
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.timeout", "30m")
 
 # Keep executors with cached data
 spark.conf.set("spark.dynamicAllocation.cachedExecutorIdleTimeout", "infinity")
@@ -432,7 +475,7 @@ spark.conf.set("spark.dynamicAllocation.cachedExecutorIdleTimeout", "infinity")
 
 **Symptom**: Slow performance, pending tasks
 
-**Root Cause**: Max executors too low or scaling too slow
+**Root Cause**: Max executors too low, quota cap, or scaling too slow
 
 **Solution:**
 ```python
@@ -442,49 +485,52 @@ spark.conf.set("spark.dynamicAllocation.maxExecutors", "100")
 # Faster scaling
 spark.conf.set("spark.dynamicAllocation.schedulerBacklogTimeout", "1s")
 spark.conf.set("spark.dynamicAllocation.sustainedSchedulerBacklogTimeout", "3s")
+# Also check the namespace ResourceQuota isn't the ceiling.
 ```
 
-### Issue 5: Resource Fragmentation
+### Issue 5: Pods Pending Despite Free Capacity
 
-**Symptom**: Resources available but containers not allocated
+**Symptom**: Cluster shows free CPU/RAM but pods won't schedule
 
-**Root Cause**: Fragmented resources, can't fit requested size
+**Root Cause**: Fragmentation — no *single* node has room for the requested pod size; or affinity/taint rules exclude nodes
 
 **Solution:**
 ```python
-# Reduce container size
-spark.conf.set("spark.executor.memory", "8g")  # Smaller containers
+# Reduce pod size so it fits a node
+spark.conf.set("spark.executor.memory", "8g")
 spark.conf.set("spark.executor.cores", "4")
 
-# Or request smaller initial allocation
+# Or request fewer initial executors
 spark.conf.set("spark.dynamicAllocation.initialExecutors", "5")
+```
+```
+# Review node affinity / taints in the pod template if pods avoid otherwise-free nodes.
 ```
 
 ## 📝 Key Takeaways
 
-1. **Dynamic allocation** adapts to workload demand
-2. **YARN manages** cluster resources globally
-3. **Container size** must fit YARN limits
-4. **Queue configuration** affects resource availability
-5. **Monitor allocation** to optimize performance
+1. **Dynamic allocation** adapts to workload demand — enable **shuffle tracking** on K8S
+2. **Kubernetes schedules pods**; the driver pod requests executor pods directly
+3. **Pod request/limit** = executor memory + overhead; must fit node allocatable
+4. **Namespaces + ResourceQuota** replace YARN queues for multi-tenancy
+5. **Monitor pods** (`kubectl get/top/describe`) to optimize performance
 6. **Static allocation** for predictable workloads
 7. **Dynamic allocation** for variable workloads
-8. **Right-size containers** to avoid fragmentation
+8. **Right-size pods** so they fit a node and the LimitRange
 
 ## 🔗 Next Steps
 
 - **Day 10**: Data Skew Handling
-- Practice: Configure dynamic allocation for your workloads
-- Experiment: Compare static vs dynamic allocation
-- Monitor: Track resource utilization patterns
+- Practice: Configure dynamic allocation (with shuffle tracking) for your workloads
+- Experiment: Compare static vs dynamic allocation, watch `kubectl get pods -w`
+- Monitor: Track pod scheduling and namespace quota utilization
 
 ## 📚 Additional Resources
 
 - [Dynamic Allocation Guide](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation)
-- [YARN Configuration](https://hadoop.apache.org/docs/current/hadoop-yarn/hadoop-yarn-site/YARN.html)
-- [Resource Management](https://spark.apache.org/docs/latest/running-on-yarn.html)
+- [Running Spark on Kubernetes](https://spark.apache.org/docs/latest/running-on-kubernetes.html)
+- [Kubernetes ResourceQuota](https://kubernetes.io/docs/concepts/policy/resource-quotas/)
 
 ---
 
 **Progress**: Day 9/40 ✅
-

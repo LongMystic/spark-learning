@@ -2,19 +2,19 @@
 
 ## exercise-08 (configuration tuning)
 1. Optimal executor size from the calculator: ~5 cores, split RAM per 2–3 executors/node, +overhead.
-2. Bigger executors = fewer JVMs but longer GC; ~5 cores balances HDFS throughput.
+2. Bigger executors = fewer JVMs but longer GC; keep ~5 cores/executor — beyond that, the object-store (s3a) client throughput and GC start to suffer, so ~5 is the sweet spot.
 3. Parallelism ≈ 2–3× total cores keeps all slots busy without tiny tasks.
 4. ETL (cache-heavy) → higher storageFraction; analytics (compute-heavy) → higher execution.
 5. AQE coalesces/splits partitions and can switch joins → less manual tuning.
-6. Executor confs are submit-time (YARN); locally they're printed, not applied — expected.
+6. Executor confs are submit-time (Kubernetes: spark-submit --master k8s:// or a SparkApplication CRD); locally they're printed, not applied — expected.
 
 ## exercise-09 (resource allocation)
-1. Dynamic allocation adds executors on backlog, removes idle ones after the timeout.
+1. Dynamic allocation adds executor pods on backlog, removes idle ones after the timeout.
 2. Backlog (pending tasks) → scale up; idle beyond `executorIdleTimeout` → scale down.
 3. Executors holding cached data aren't removed (`cachedExecutorIdleTimeout=infinity`).
-4. Dynamic uses fewer resources when idle but must pair with the external shuffle service.
+4. Dynamic uses fewer resources when idle, but on K8S there is NO external shuffle service — you MUST enable `spark.dynamicAllocation.shuffleTracking.enabled` (or executor decommissioning / a shuffle PVC) so removing an executor doesn't discard its shuffle blocks.
 5. Conservative = shared-cluster friendly; aggressive = dedicated/perf-critical.
-6. YARN queue caps a job's share; submit with `--queue`.
+6. A namespace + ResourceQuota caps a tenant's share; submit with `--conf spark.kubernetes.namespace=<ns>`.
    (Allocation confs are submit-time; locally printed via `show()` — expected.)
 
 ## exercise-10 (data skew)

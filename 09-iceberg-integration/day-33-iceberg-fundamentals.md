@@ -16,17 +16,19 @@ Hive tables track partitions as directories in a metastore — slow listings, no
 - **Schema & partition evolution** without rewriting data.
 - **File-level stats** for fast pruning.
 
-### 2. Configure the catalog (on-prem, Hadoop/HDFS)
+### 2. Configure the catalog (on-prem, MinIO/S3)
 ```python
 spark = (SparkSession.builder
   .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
   .config("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")
   .config("spark.sql.catalog.local.type", "hadoop")
-  .config("spark.sql.catalog.local.warehouse", "hdfs:///warehouse/iceberg")
+  .config("spark.sql.catalog.local.warehouse", "s3a://warehouse/iceberg")
   .getOrCreate())
 # (Our local env: set ENABLE_ICEBERG=1 to get exactly this, on the local filesystem.)
 ```
-Production commonly uses a **Hive catalog** (`type=hive`) so Iceberg tables show up in the shared metastore alongside existing tables.
+> Note: `type=hadoop` here is Iceberg's **filesystem catalog** implementation — it tracks tables via files under the warehouse path on the `s3a://` FileSystem. It is *not* the YARN/HDFS stack; "hadoop" just names the Iceberg catalog impl.
+
+Production commonly uses a **Hive catalog** (`type=hive`) or a **REST catalog** so Iceberg tables show up in a shared metastore alongside existing tables.
 
 ### 3. Create, write, read
 ```sql
@@ -55,7 +57,7 @@ SELECT * FROM local.db.transactions VERSION AS OF 1234567890;
 
 ## 💡 Key Insights for On-Premise
 ### 1. Iceberg fixes the small-file & listing pain
-No directory listing to find partitions — Iceberg reads manifests. Combined with compaction (Day 34), it's a strong answer to HDFS small-file problems that plague Hive tables.
+No directory listing to find partitions — Iceberg reads manifests. Combined with compaction (Day 34), it's a strong answer to object-store small-file problems that plague Hive tables (listing many tiny objects on S3/MinIO is slow and expensive).
 
 ### 2. Concurrent writers are safe
 Iceberg's optimistic-concurrency commits let multiple jobs write without corrupting the table (retries on conflict). This makes CDC/upsert pipelines (Day 34/38) reliable, unlike naive Parquet overwrites.

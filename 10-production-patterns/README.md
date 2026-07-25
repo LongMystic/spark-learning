@@ -2,7 +2,7 @@
 
 ## 🎯 Overview
 
-Comprehensive production patterns for enterprise Spark deployments on on-premise Hadoop clusters.
+Comprehensive production patterns for enterprise Spark deployments on on-premise Kubernetes clusters.
 
 ## 📚 Topics Covered
 
@@ -31,10 +31,10 @@ Comprehensive production patterns for enterprise Spark deployments on on-premise
    - Performance dashboards
 
 5. **Resource Management**
-   - YARN configuration
-   - Fair scheduler tuning
-   - Dynamic allocation
-   - Resource pools
+   - Namespaces + ResourceQuota / LimitRange
+   - Scheduler pools (in-app FAIR) tuning
+   - Dynamic allocation (shuffle tracking)
+   - Multi-tenancy isolation
 
 6. **Security Patterns**
    - Authentication

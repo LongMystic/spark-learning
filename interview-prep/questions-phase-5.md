@@ -25,7 +25,8 @@ and directory-listing pain.</details>
 to reclaim storage, `rewrite_manifests` for metadata; schedule these off-peak.</details>
 
 <details><summary>6. How do you orchestrate Spark from Airflow robustly?</summary>
-Airflow schedules; Spark computes on YARN (SparkSubmit/Livy operators). Parameterize by
+Airflow schedules; Spark computes on Kubernetes (`SparkKubernetesOperator` applying a
+`SparkApplication` CRD, or `SparkSubmitOperator` with a `k8s://` master). Parameterize by
 logical date, write only that partition idempotently (dynamic overwrite / MERGE), set
 retries, add a DQ gate before publish. Never build DataFrames in the Airflow worker.</details>
 
@@ -44,6 +45,8 @@ Gold (marts). Everything idempotent; Iceberg for atomic MERGE; compaction + stat
 maintenance.</details>
 
 <details><summary>10. How do you share one cluster across teams fairly and securely?</summary>
-Capacity/fair scheduler queues with guaranteed+max caps, fair pools (e.g. in the STS),
-dynamic allocation + external shuffle service; Kerberos auth (with token renewal for long
-jobs), Ranger/ACL authorization, TLS + at-rest encryption.</details>
+A **namespace per team** with a `ResourceQuota` (guaranteed requests + burst limits) and a
+`LimitRange` for per-pod caps, fair pools (e.g. in the STS), dynamic allocation + shuffle
+tracking (no external shuffle service on K8S); **ServiceAccounts + RBAC** for authn/authz
+and **Secrets** for S3/MinIO keys, Ranger/ACL authorization on the data, TLS in transit +
+S3/MinIO server-side encryption at rest.</details>

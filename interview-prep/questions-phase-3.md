@@ -13,7 +13,8 @@ executors won't help a driver OOM.</details>
 <details><summary>3. What is a FetchFailedException really telling you?</summary>
 A reducer couldn't fetch shuffle blocks — almost always because a **map-side executor
 died** (OOM/kill/GC) or disk/network failed. Fix the executor loss; the fetch error is
-downstream. Pair dynamic allocation with the external shuffle service.</details>
+downstream. On K8S (no external shuffle service) pair dynamic allocation with **shuffle
+tracking** so a removed executor's blocks aren't lost.</details>
 
 <details><summary>4. Task fails 4× with the same error — what does that mean?</summary>
 Deterministic bug (data/UDF), not infrastructure. Retries won't help; reproduce on that
@@ -32,9 +33,11 @@ UDF (Arrow). Python UDFs cross the JVM↔Python boundary per row and block pushd
 Helps when a slow node makes a few tasks lag. Hurts with skew (the duplicate is equally
 slow) and non-idempotent writes (duplicates).</details>
 
-<details><summary>8. How do you get logs on a YARN cluster?</summary>
-`yarn logs -applicationId <id>` (aggregated after the app ends), the RM UI per-container
-logs while running, and the Spark History Server (:18080) to replay the UI.</details>
+<details><summary>8. How do you get logs on a Kubernetes cluster?</summary>
+`kubectl logs <driver-pod>` / `kubectl logs -l spark-role=executor` while pods are alive,
+and `kubectl logs --previous` for a crashed pod's last run. Pods are ephemeral, so rely on
+the log stack (Fluent Bit → Loki/EFK) for anything already gone, plus the Spark History
+Server (:18080, reading `s3a://spark-events`) to replay the UI.</details>
 
 <details><summary>9. Walk me through your production incident playbook.</summary>
 Acknowledge (impact/since-when) → Assess (failing/hung/slow, which stage) → Stabilize

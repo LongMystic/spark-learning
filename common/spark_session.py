@@ -2,13 +2,14 @@
 Shared SparkSession factory for the Spark Mastery learning path.
 
 Every exercise imports from here so the SAME code runs unchanged whether you are:
-  - on your laptop  (local[*], or the local docker standalone cluster)
-  - on the on-prem YARN cluster (just export SPARK_MASTER=yarn)
+  - on your laptop  (local[*], or the local minikube Kubernetes cluster)
+  - on the on-prem Kubernetes cluster (export SPARK_MASTER=k8s://https://<api-server>:6443)
 
 Environment variables (all optional):
-  SPARK_MASTER   default "local[*]"      e.g. "spark://localhost:7077" or "yarn"
+  SPARK_MASTER   default "local[*]"      e.g. "k8s://https://127.0.0.1:8443" (minikube) or a prod API server
   DATA_DIR       default "<repo>/data"    where generate_data.py wrote the parquet tables
-  ENABLE_ICEBERG "0"/"1", default "0"     adds Iceberg SQL extensions + a local hadoop catalog
+                                          (on a cluster, an s3a:// path into MinIO/S3)
+  ENABLE_ICEBERG "0"/"1", default "0"     adds Iceberg SQL extensions + a local filesystem catalog
   SPARK_EVENTLOG "0"/"1", default "1"     write event logs so the History Server (:18080) can replay runs
 
 Usage inside an exercise:
@@ -76,6 +77,9 @@ def get_spark(app_name: str = "spark-learning", extra_conf: dict | None = None):
                 "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
             )
             .config("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")
+            # "hadoop" here is Iceberg's *filesystem* catalog implementation (it runs over
+            # any Hadoop FileSystem, incl. local file:// and s3a://) — NOT the YARN/HDFS
+            # stack. On the cluster point the warehouse at s3a://warehouse/iceberg instead.
             .config("spark.sql.catalog.local.type", "hadoop")
             .config("spark.sql.catalog.local.warehouse", _as_uri(warehouse))
         )

@@ -13,8 +13,9 @@ Every lesson has a runnable exercise, and you can run all of it on your laptop.
 - ✅ **TEMPLATE_day-lesson.md** — lesson format
 
 ### Local environment (run everything cluster-free)
-- ✅ **environment/** — Docker standalone cluster (1 master + 2 workers + history server),
-  `generate_data.py` sample-data generator, `requirements.txt`, Kafka producer for streaming
+- ✅ **environment/** — minikube Kubernetes setup (`setup.sh` + `k8s/` manifests: Spark Operator,
+  MinIO/S3, History Server, namespaces+quotas), `generate_data.py` sample-data generator,
+  `requirements.txt`, Kafka producer for streaming
 - ✅ **common/spark_session.py** — shared SparkSession factory used by every exercise
 
 ### Lesson content

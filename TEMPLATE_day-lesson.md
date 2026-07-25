@@ -46,7 +46,7 @@
 
 ### 1. [On-Premise Specific Insight]
 
-- Details relevant to Hadoop/YARN environment
+- Details relevant to the Kubernetes environment
 
 ### 2. [Another Insight]
 

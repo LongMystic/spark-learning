@@ -12,11 +12,11 @@ By the end of this journey, you will be able to:
 - **Design** efficient Spark jobs for ETL pipelines
 - **Optimize** Spark applications for performance and resource utilization
 - **Troubleshoot** and fix common Spark errors and performance issues
-- **Tune** Spark configurations for on-premise Hadoop clusters
+- **Tune** Spark configurations for on-premise Kubernetes clusters
 - **Master** Spark Thrift Server, Structured Streaming, Iceberg, and PySpark best practices
 
 ## 🛠️ Target Tech Stack
-- **Platform**: On-premise Hadoop cluster (YARN)
+- **Platform**: On-premise Kubernetes cluster (Spark on K8S), MinIO/S3 storage
 - **Storage**: Hive, Iceberg
 - **Processing**: Spark (Thrift Server, PySpark, Structured Streaming)
 - **Orchestration**: Airflow · **Transformation**: DBT · **Visualization**: Superset
@@ -32,8 +32,8 @@ python environment/generate_data.py --scale small
 python exercises/fundamentals/exercise-01-dag-analysis.py
 ```
 
-Prefer a real cluster feel? Use the [Docker standalone cluster](environment/README.md)
-(1 master + 2 workers + history server). Then read
+Prefer a real cluster feel? Use the [minikube Kubernetes cluster](environment/README.md)
+(Spark Operator + MinIO/S3 + History Server — real driver/executor pods). Then read
 [Day 1: Execution Model](01-fundamentals/day-01-execution-model.md) and follow
 [GETTING_STARTED.md](GETTING_STARTED.md) for the daily routine.
 

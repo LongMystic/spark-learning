@@ -21,7 +21,7 @@ A production **incident** is "a pipeline the business depends on is failing or l
 ### 3. The playbook
 ```
 1. ACKNOWLEDGE  — who's on it, what's impacted, since when.
-2. ASSESS       — is it failing, hung, or slow? which stage? Spark UI / yarn logs.
+2. ASSESS       — is it failing, hung, or slow? which stage? Spark UI / kubectl logs + kubectl get pods.
 3. STABILIZE    — the fastest safe mitigation (below), even if ugly.
 4. DIAGNOSE     — root cause via Days 15-20 method.
 5. FIX          — permanent change + test.
@@ -31,7 +31,7 @@ A production **incident** is "a pipeline the business depends on is failing or l
 ## 🔍 Deep Dive: Fast mitigations (buy time safely)
 
 - **Transient/infra flake** → re-run the job (idempotent writes make this safe — see below).
-- **Resource starvation** (queue full) → resubmit to a higher-priority queue or bump executors temporarily.
+- **Resource starvation** (namespace quota exhausted / pods stuck `Pending`) → resubmit into a namespace with free quota, raise the `ResourceQuota` temporarily, or bump executors.
 - **Skew blew up today** → enable AQE skew join / raise `shuffle.partitions` and re-run.
 - **Bad input data** (upstream sent garbage) → quarantine the bad partition, re-run for good partitions, escalate upstream.
 - **Downstream deadline** → deliver yesterday's snapshot / partial data with a clear caveat while you fix.
@@ -47,10 +47,10 @@ spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
 ## 💡 Key Insights for On-Premise
 
 ### 1. Know your escape hatches before the incident
-Have ready: the RM UI URL, history server URL, the `yarn logs` command, which queue has spare capacity, and who owns the upstream data. Finding these *during* Sev-1 wastes the SLA.
+Have ready: `kubectl get pods` / `kubectl describe pod` for your namespace, the History Server URL, the `kubectl logs` command (and `--previous`), which namespace has spare quota, and who owns the upstream data. Finding these *during* Sev-1 wastes the SLA.
 
 ### 2. Shared-cluster incidents are often "someone else's job"
-On multi-tenant YARN, your job may fail because another team saturated the queue or a NodeManager died. Check cluster-wide health (RM UI, queue utilization) before assuming your code broke.
+On a multi-tenant Kubernetes cluster, your job may fail because another team's namespace saturated shared node capacity or a node went NotReady. Check cluster-wide health (`kubectl get nodes`, `kubectl top nodes`, namespace quota utilization, Pending pods) before assuming your code broke.
 
 ## 🎯 Practical Exercises
 

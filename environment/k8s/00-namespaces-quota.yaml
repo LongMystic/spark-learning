@@ -1,0 +1,61 @@
+# Namespaces are how we do multi-tenancy on Kubernetes — they REPLACE YARN queues.
+# Each tenant gets a namespace with a ResourceQuota (its guaranteed/burst share, the
+# analog of a capacity-scheduler queue) and a LimitRange (max size of a single pod,
+# the analog of yarn.scheduler.maximum-allocation-*).
+#
+#   spark-submit ... --conf spark.kubernetes.namespace=production
+#
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spark-jobs        # default namespace exercises submit into
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production        # multi-tenancy demo (Day 39): the "production queue"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: development       # multi-tenancy demo (Day 39): the "development queue"
+---
+# ResourceQuota == a YARN queue's capacity / max-capacity.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: production-quota
+  namespace: production
+spec:
+  hard:
+    requests.cpu: "8"          # guaranteed share (scale down for a laptop)
+    requests.memory: 16Gi
+    limits.cpu: "12"           # burst ceiling
+    limits.memory: 24Gi
+    pods: "20"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: development-quota
+  namespace: development
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "6"
+    limits.memory: 12Gi
+    pods: "12"
+---
+# LimitRange == yarn.scheduler.maximum-allocation-mb / -vcores: caps a single pod.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: pod-limits
+  namespace: spark-jobs
+spec:
+  limits:
+    - type: Container
+      max: { cpu: "4", memory: 8Gi }        # biggest executor pod allowed
+      default: { cpu: "1", memory: 2Gi }
+      defaultRequest: { cpu: "500m", memory: 1Gi }

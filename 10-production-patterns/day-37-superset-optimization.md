@@ -10,9 +10,9 @@
 
 ### 1. The path a Superset chart takes
 ```
-Superset chart  --SQLAlchemy/JDBC-->  Spark Thrift Server  -->  YARN executors  -->  Iceberg/Hive
+Superset chart  --SQLAlchemy/JDBC-->  Spark Thrift Server  -->  Kubernetes (driver + executor pods)  -->  Iceberg/Hive
 ```
-Every dashboard tile is a SQL query against the **shared** STS driver. A dashboard with 20 tiles = 20 concurrent Spark queries. Design accordingly.
+Every dashboard tile is a SQL query against the **shared** STS driver (a long-lived driver pod, Day 29). A dashboard with 20 tiles = 20 concurrent Spark queries. Design accordingly.
 
 ### 2. The core rule: don't query raw facts from BI
 Interactive BI should read **small, pre-aggregated marts**, not billion-row fact tables. Push the heavy aggregation into scheduled Spark/dbt jobs (Days 35–36); let Superset read the compact result.

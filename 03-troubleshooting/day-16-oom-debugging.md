@@ -3,7 +3,7 @@
 ## 🎯 Learning Objectives
 - Distinguish **driver** OOM from **executor** OOM — they have opposite fixes
 - Map an OOM to a specific memory region (heap, off-heap/overhead, user)
-- Recognize the YARN "container killed for exceeding memory" case
+- Recognize the pod **OOMKilled** (exit 137) "cgroup killed the container for exceeding its memory limit" case
 - Apply the right fix instead of blindly bumping `--executor-memory`
 
 ## 📚 Core Concepts
@@ -13,7 +13,7 @@
 | | Driver OOM | Executor OOM |
 |---|---|---|
 | Trigger | `collect()`, `toPandas()`, huge broadcast, giant plan | skew, large shuffle/agg, wide rows, caching |
-| Log location | driver / AM container | executor container |
+| Log location | driver pod | executor pod |
 | Typical fix | stop pulling data to driver; raise `maxResultSize`/driver mem | reduce per-task data; more partitions; fix skew |
 | Wrong fix | adding executors (does nothing) | adding driver memory (does nothing) |
 
@@ -27,7 +27,7 @@
     └── Storage (cache)
 ```
 - `java.lang.OutOfMemoryError: Java heap space` → **heap** too small for the region under pressure.
-- `Container killed by YARN for exceeding memory limits. X GB of Y GB physical memory used` → **overhead/off-heap** too small (very common with PySpark, which runs Python *outside* the heap).
+- Pod **OOMKilled** (exit code **137**, `kubectl describe pod` shows `Reason: OOMKilled`) → the executor's total RSS exceeded its **pod memory limit**, so the kubelet/cgroup killed it. On K8S the pod limit = `spark.executor.memory` + `spark.executor.memoryOverhead`, so an OOMKill with the heap *not* full means **overhead/off-heap** too small (very common with PySpark, which runs Python *outside* the heap) — NOT the heap. Same root cause the YARN "container killed for exceeding memory" message pointed at; different signal.
 
 ### 3. The signals
 - `OutOfMemoryError: GC overhead limit exceeded` → heap almost full, JVM spends all time in GC.
@@ -50,7 +50,7 @@ Also: over-large auto-broadcast (`spark.sql.autoBroadcastJoinThreshold` too high
 ### Executor OOM — order of remedies
 1. **More partitions / higher `spark.sql.shuffle.partitions`** → smaller per-task footprint (cheapest, try first).
 2. **Fix skew** (salting / AQE skew join) if one partition is huge.
-3. **Raise memoryOverhead** if the log says *container killed* (esp. PySpark, Pandas UDFs).
+3. **Raise memoryOverhead** if the pod is *OOMKilled* while the heap isn't full (esp. PySpark, Pandas UDFs).
 4. **Raise executor heap** only if genuinely needed and the node has RAM.
 5. **Reduce columns/rows early** (project + filter before wide ops).
 
@@ -86,7 +86,7 @@ A 64GB executor heap can suffer long G1 pauses that look like hangs and trigger 
 ### Key Metrics to Monitor
 1. **Executors tab**: Peak JVM memory, GC time, and *off-heap* usage.
 2. **Stages tab**: Spill (Memory) and Spill (Disk) — precursors to OOM.
-3. **YARN**: container physical vs virtual memory used at kill time.
+3. **`kubectl describe pod`**: `Reason: OOMKilled` / exit code 137, and the pod's memory limit vs `kubectl top pod` usage at kill time.
 
 ### Spark UI Analysis
 - A stage where a few tasks have massive input/shuffle-read → skew-driven OOM.
@@ -95,8 +95,8 @@ A 64GB executor heap can suffer long G1 pauses that look like hangs and trigger 
 ## 🚨 Common Issues & Solutions
 
 ### Issue 1: "I gave it 32g and it still OOMs"
-**Symptom**: heap raised, still `container killed`.
-**Solution**: it's **overhead**, not heap. Raise `spark.executor.memoryOverhead`.
+**Symptom**: heap raised, pod still `OOMKilled` (exit 137).
+**Solution**: it's **overhead**, not heap. Raise `spark.executor.memoryOverhead` (which raises the pod memory limit).
 
 ### Issue 2: Job dies at the very end on the driver
 **Symptom**: all stages green, then OOM.
@@ -104,7 +104,7 @@ A 64GB executor heap can suffer long G1 pauses that look like hangs and trigger 
 
 ## 📝 Key Takeaways
 1. First decide **driver vs executor** — the fixes are opposite.
-2. "Container killed by YARN" = **overhead/off-heap**, not heap.
+2. Pod **OOMKilled** with the heap not full = **overhead/off-heap**, not heap.
 3. PySpark OOMs are usually overhead (Python lives off-heap).
 4. More partitions and skew fixes beat brute-force memory bumps.
 5. Prefer medium executors over one giant GC-prone executor.
@@ -115,7 +115,7 @@ A 64GB executor heap can suffer long G1 pauses that look like hangs and trigger 
 
 ## 📚 Additional Resources
 - Spark Memory Management / Tuning docs
-- YARN memory configuration (`yarn.nodemanager.vmem-check-enabled`)
+- Kubernetes pod memory requests/limits + OOMKilled behavior (cgroup limits); Spark's `spark.kubernetes.memoryOverheadFactor`
 
 ---
 

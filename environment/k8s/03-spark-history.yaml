@@ -1,0 +1,44 @@
+# Spark History Server — replays finished apps from s3a://spark-events/.
+# Same role as before, but it now reads event logs from MinIO instead of HDFS,
+# and it runs as a pod instead of a YARN/standalone daemon.
+#   Reach it at http://localhost:18080 after:  kubectl -n spark-jobs port-forward svc/spark-history 18080:18080
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-history
+  namespace: spark-jobs
+  labels: { app: spark-history }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: spark-history } }
+  template:
+    metadata:
+      labels: { app: spark-history }
+    spec:
+      serviceAccountName: spark
+      containers:
+        - name: spark-history
+          image: spark:3.5.1
+          command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.history.HistoryServer"]
+          envFrom:
+            - secretRef: { name: minio-creds }   # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+          env:
+            - name: SPARK_HISTORY_OPTS
+              value: >-
+                -Dspark.history.fs.logDirectory=s3a://spark-events/
+                -Dspark.hadoop.fs.s3a.endpoint=http://minio.default.svc.cluster.local:9000
+                -Dspark.hadoop.fs.s3a.path.style.access=true
+                -Dspark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+                -Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
+          ports:
+            - { containerPort: 18080, name: web }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-history
+  namespace: spark-jobs
+spec:
+  selector: { app: spark-history }
+  ports:
+    - { name: web, port: 18080, targetPort: 18080 }

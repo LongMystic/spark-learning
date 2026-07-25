@@ -37,11 +37,17 @@ print("\n" + "=" * 60)
 print("How you'd run it on the cluster")
 print("=" * 60)
 print(r"""
+  # STS runs as a long-lived driver pod (client mode) on Kubernetes, fronted by a Service.
   start:  $SPARK_HOME/sbin/start-thriftserver.sh \
-            --master yarn --hiveconf hive.server2.thrift.port=10000 \
+            --master k8s://https://<api-server>:6443 --deploy-mode client \
+            --hiveconf hive.server2.thrift.port=10000 \
+            --conf spark.kubernetes.namespace=spark-jobs \
+            --conf spark.kubernetes.container.image=<registry>/spark:3.5.1 \
+            --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
+            --conf spark.driver.host=spark-thrift.spark-jobs.svc.cluster.local \
             --conf spark.sql.thriftServer.incrementalCollect=true \
             --conf spark.dynamicAllocation.enabled=true \
-            --conf spark.shuffle.service.enabled=true \
+            --conf spark.dynamicAllocation.shuffleTracking.enabled=true \
             --conf spark.scheduler.mode=FAIR
   connect: beeline -u 'jdbc:hive2://sts-host:10000'
   Superset/DBT connect to the SAME endpoint (Days 36-37).

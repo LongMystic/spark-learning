@@ -119,8 +119,20 @@ def build_transactions_skewed(spark, n_txns, n_customers):
     return _base_transactions(spark, n_txns, n_customers, skewed)
 
 
+def _is_uri(path: str) -> bool:
+    """True for object-store / distributed paths like s3a://... or file://... (not a local dir)."""
+    return "://" in path
+
+
+def _join(out_dir: str, name: str) -> str:
+    """Join a table name onto out_dir, keeping URI paths ('/') intact on every OS."""
+    if _is_uri(out_dir):
+        return out_dir.rstrip("/") + "/" + name
+    return os.path.join(out_dir, name)
+
+
 def write(df, name, out_dir, overwrite, partition_by=None):
-    path = os.path.join(out_dir, name)
+    path = _join(out_dir, name)
     writer = df.write.mode("overwrite" if overwrite else "errorifexists")
     if partition_by:
         writer = writer.partitionBy(partition_by)
@@ -136,7 +148,9 @@ def main():
     args = parser.parse_args()
 
     out_dir = args.out or data_dir()
-    os.makedirs(out_dir, exist_ok=True)
+    # Only pre-create local directories; object stores (s3a://) create prefixes lazily.
+    if not _is_uri(out_dir):
+        os.makedirs(out_dir, exist_ok=True)
     cfg = SCALES[args.scale]
 
     spark = get_spark(f"generate-data-{args.scale}", extra_conf={"spark.sql.shuffle.partitions": "16"})

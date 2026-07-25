@@ -2,39 +2,71 @@
 
 ## 🎯 Learning Objectives
 - Orchestrate Spark jobs from Airflow the robust way
-- Choose between operators (SparkSubmit, SSH, Livy, Kubernetes)
+- Choose between operators (SparkKubernetes CRD, SparkSubmit, Livy)
 - Make DAGs idempotent, retryable, and observable
 - Pass config/dates cleanly from Airflow to Spark
 
 ## 📚 Core Concepts
 
 ### 1. Airflow's job: schedule & dependencies, not compute
-Airflow triggers and tracks tasks; **Spark does the heavy lifting on YARN**. Keep transformation logic in versioned Spark jobs; keep Airflow as thin orchestration.
+Airflow triggers and tracks tasks; **Spark runs on Kubernetes** — the driver and executor pods do the heavy lifting. Keep transformation logic in versioned Spark jobs; keep Airflow as thin orchestration.
 
-### 2. Ways to launch Spark from Airflow (on-prem)
+### 2. Ways to launch Spark from Airflow (on-prem Kubernetes)
 | Operator | How | Notes |
 |----------|-----|-------|
-| `SparkSubmitOperator` | runs `spark-submit` from the Airflow worker | needs Spark client + configs on the worker |
-| `SSHOperator` / `BashOperator` | ssh to an edge node, `spark-submit` | simple, common on-prem |
+| `SparkKubernetesOperator` + `SparkKubernetesSensor` | applies a `SparkApplication` CRD, then waits for it | **preferred**: declarative, the Spark Operator runs the job; the sensor tracks pod state |
+| `SparkSubmitOperator` | runs `spark-submit --master k8s://` from the Airflow worker | needs Spark client + kubeconfig on the worker |
 | `LivyOperator` | REST to Apache Livy | no Spark client on workers; good isolation |
-| Kubernetes operators | pods | if you run Spark-on-k8s |
+| `KubernetesPodOperator` | a bare pod that runs `spark-submit` | lowest-level fallback |
 
 ```python
-from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from airflow.providers.cncf.kubernetes.operators.spark_kubernetes import SparkKubernetesOperator
+from airflow.providers.cncf.kubernetes.sensors.spark_kubernetes import SparkKubernetesSensor
 
-run_etl = SparkSubmitOperator(
+# The operator applies a SparkApplication CRD; the Spark Operator reconciles it into
+# a driver pod (which requests executor pods). The sensor waits for it to finish.
+run_etl = SparkKubernetesOperator(
     task_id="daily_etl",
-    application="/opt/jobs/daily_etl.py",
-    conn_id="spark_yarn",
-    conf={"spark.sql.adaptive.enabled": "true",
-          "spark.dynamicAllocation.enabled": "true"},
-    application_args=["--run-date", "{{ ds }}"],   # Airflow templating passes the logical date
+    namespace="spark-jobs",
+    application_file="daily_etl_sparkapplication.yaml",  # rendered with {{ ds }}
+    kubernetes_conn_id="kubernetes_default",             # a Kubernetes connection, NOT spark_yarn
+    do_xcom_push=True,
 )
+
+watch_etl = SparkKubernetesSensor(
+    task_id="daily_etl_monitor",
+    namespace="spark-jobs",
+    application_name="daily-etl-{{ ds_nodash }}",
+    kubernetes_conn_id="kubernetes_default",
+)
+run_etl >> watch_etl
+```
+
+The `SparkApplication` CRD it applies carries the config and the templated run date:
+
+```yaml
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata: { name: daily-etl-{{ ds_nodash }}, namespace: spark-jobs }
+spec:
+  type: Python
+  mode: cluster
+  image: <registry>/spark:3.5.1
+  mainApplicationFile: local:///opt/spark-apps/jobs/daily_etl.py
+  arguments: ["--run-date", "{{ ds }}"]   # Airflow templating passes the logical date
+  sparkVersion: "3.5.1"
+  restartPolicy: { type: Never }
+  driver:   { cores: 1, memory: 4g, serviceAccount: spark }
+  executor: { cores: 5, instances: 30, memory: 14g }
+  sparkConf:
+    "spark.sql.adaptive.enabled": "true"
+    "spark.dynamicAllocation.enabled": "true"
+    "spark.dynamicAllocation.shuffleTracking.enabled": "true"   # required on K8S (no external shuffle service)
 ```
 
 ### 3. Idempotency + retries (the whole point)
 - Pass the **logical date** (`{{ ds }}`) and have the job write only that partition (dynamic partition overwrite / MERGE — Days 21, 34) so **retries and backfills are safe**.
-- Set `retries` + `retry_delay`; a transient YARN/network failure should self-heal.
+- Set `retries` + `retry_delay`; a transient pod/network failure should self-heal.
 - Make tasks **atomic**: one Spark job = one clear output, so a partial failure never leaves half-written state.
 
 ## 🔍 Deep Dive: A resilient daily pipeline
@@ -48,13 +80,13 @@ extract  >>  transform  >>  data_quality_check  >>  publish  >>  iceberg_mainten
 
 ## 💡 Key Insights for On-Premise
 ### 1. Don't run Spark inside the Airflow worker process
-Never build a big DataFrame **in the DAG file / a PythonOperator on the Airflow worker** — it competes with the scheduler and doesn't use the cluster. Always submit to YARN.
+Never build a big DataFrame **in the DAG file / a PythonOperator on the Airflow worker** — it competes with the scheduler and doesn't use the cluster. Always submit to the cluster (apply a `SparkApplication`/`spark-submit`); don't build big DataFrames in the DAG or a PythonOperator.
 
 ### 2. Connection & config management
-Store the YARN/queue/keytab details in an Airflow **Connection**, not hardcoded. Kerberized clusters need the keytab/principal available to the submitting worker.
+Store the **Kubernetes context / namespace / image** in an Airflow **Connection** (a `kubernetes` conn such as `kubernetes_default`), not hardcoded. Instead of a Kerberos keytab, the driver/executor pods authenticate to the API server with an **RBAC ServiceAccount**, and read MinIO/S3 credentials from a **Secret** referenced by the SparkApplication (`envFrom: secretRef`) — no keytab to distribute to the worker.
 
 ### 3. Observability
-Surface the Spark app URL (RM/history) in task logs so an operator can jump from a failed Airflow task straight to the Spark UI.
+Surface the driver-pod name and the History Server URL in task logs (the `SparkKubernetesSensor` tracks pod status) so an operator can jump from a failed Airflow task straight to `kubectl logs <driver-pod>` and the Spark UI.
 
 ## 🎯 Practical Exercises
 
@@ -86,8 +118,8 @@ Surface the Spark app URL (RM/history) in task logs so an operator can jump from
 **Solution**: you're computing in Airflow — move it into `spark-submit` on the cluster.
 
 ## 📝 Key Takeaways
-1. Airflow orchestrates; Spark computes on YARN.
-2. Prefer SparkSubmit/Livy operators; keep logic in versioned jobs.
+1. Airflow orchestrates; Spark computes on Kubernetes (driver + executor pods).
+2. Prefer the SparkKubernetes CRD operator (or SparkSubmit/Livy); keep logic in versioned jobs.
 3. Parameterize by logical date and write idempotently → safe retries/backfills.
 4. Add a data-quality gate before publish; run Iceberg maintenance after.
 5. Never build DataFrames in the Airflow worker.

@@ -12,8 +12,9 @@
 dbt compiles your **SQL models** into `CREATE TABLE/VIEW`/`INSERT` statements and runs them through a warehouse — here, **Spark** via `dbt-spark` (over the Thrift Server or a session). dbt owns *transformation SQL + tests + docs + lineage*; Spark executes it.
 
 ```
-dbt models (SQL + Jinja)  --dbt-spark-->  Spark Thrift Server  -->  YARN  -->  Hive/Iceberg tables
+dbt models (SQL + Jinja)  --dbt-spark-->  Spark Thrift Server  -->  Kubernetes (driver + executor pods)  -->  Hive/Iceberg tables
 ```
+The Thrift Server itself runs as a long-lived **driver pod** on Kubernetes (Day 29); dbt connects to its JDBC endpoint.
 
 ### 2. Connection (`profiles.yml`)
 ```yaml

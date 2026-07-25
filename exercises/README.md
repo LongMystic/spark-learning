@@ -40,8 +40,8 @@ python exercises/fundamentals/exercise-01-dag-analysis.py
 - Many timing comparisons only mean something at `--scale medium`/`large` or on a real
   cluster; on tiny local data, focus on the **plans** (`explain()`) and **UI metrics**,
   not wall-clock seconds.
-- Settings like `spark.executor.instances` are submit-time (YARN) — locally they're printed
-  for reference, not applied.
+- Settings like `spark.executor.instances` are submit-time on Kubernetes (`spark-submit` /
+  the `SparkApplication` CRD) — locally they're printed for reference, not applied.
 
 ---
 

@@ -7,8 +7,8 @@ This guide will help you get started with your structured learning path.
 ## 📋 Prerequisites
 
 You need **one** of these — no production cluster required:
-- **Local (recommended to start)**: Python 3.9+ and `pip install -r environment/requirements.txt`, OR Docker for the [standalone cluster](environment/README.md).
-- **On-prem**: access to your Spark/YARN cluster and its Spark UI.
+- **Local (recommended to start)**: Python 3.9+ and `pip install -r environment/requirements.txt`, OR minikube for the [Kubernetes cluster](environment/README.md).
+- **On-prem**: access to your Spark-on-Kubernetes cluster (kubectl) and the Spark UI.
 
 Plus basic familiarity with Spark syntax and architecture (you have this! ✅).
 See [environment/README.md](environment/README.md) to set up in ~5 minutes.
@@ -140,13 +140,13 @@ spark = get_spark("Learning Exercise")     # local[*] by default
 txns  = read_table(spark, "transactions")  # reads the generated sample data
 ```
 
-Run against the cluster instead: `export SPARK_MASTER=yarn` (and point `DATA_DIR` at your data).
+Run against the cluster instead: `export SPARK_MASTER="k8s://https://<api-server>:6443"` (and point `DATA_DIR` at an `s3a://` path, e.g. `s3a://warehouse/`).
 
 ### 3. Access the Spark UI
 
 - Local app (while running): `http://localhost:4040`
 - Docker cluster: master `http://localhost:8080`, history `http://localhost:18080`
-- On YARN: `http://resource-manager:8088` → your application
+- On K8S: `kubectl -n spark-jobs get pods` to find the driver, then `kubectl -n spark-jobs port-forward <driver-pod> 4040` for the live UI (and port-forward the History Server `:18080` for finished apps)
 
 ## 📊 Tracking Progress
 

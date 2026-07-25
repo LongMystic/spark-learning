@@ -53,11 +53,15 @@
 ## exercise-39 (architecture)
 1. Streaming needs steady, predictable slots — a fixed share avoids starving it (and it
    can't hog the cluster either).
-2. Capacity-scheduler queue caps (analytics max < total) plus fair pools.
-3. Kerberos delegation tokens expire; long-running apps need keytab-based renewal
-   (`--principal`/`--keytab`).
-4. Driver → idempotent retryable job; executor → task retry + external shuffle service;
-   RM → RM HA; STS → supervised + load-balanced; streaming → checkpoint; Kafka → replication.
+2. Namespace `ResourceQuota` caps (analytics namespace limits < cluster total) plus in-app
+   FAIR scheduler pools.
+3. There are no Kerberos tokens to renew, but long-running streaming/STS driver pods depend
+   on the **Secret** holding the S3/MinIO keys (and their ServiceAccount token); rotate
+   secrets deliberately and restart/re-mount so a days-long app doesn't fail on a stale
+   credential.
+4. Driver → idempotent retryable job; executor → task retry + **shuffle tracking**
+   (no external shuffle service on K8S) or decommission-with-block-migration; control plane →
+   ≥3 nodes + etcd quorum; STS → Deployment + Service; streaming → checkpoint; Kafka → replication.
 
 ## exercise-40 (cost & observability)
 1. On-prem cost = shared resources held (executor-core-seconds + memory) × time.

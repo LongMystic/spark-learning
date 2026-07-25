@@ -1,0 +1,41 @@
+# Example SparkApplication (Spark Operator CRD) — the declarative way to run a job,
+# used in the production/orchestration lessons (Days 29, 35-40).
+# Apply with:  kubectl apply -f environment/k8s/05-example-sparkapplication.yaml
+# Watch with:  kubectl -n spark-jobs get sparkapplication example-dag-analysis -w
+#
+# This is the K8S analog of `spark-submit --master yarn --deploy-mode cluster app.py`,
+# except the job is a Kubernetes object you can version, template, and let Airflow apply.
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: example-dag-analysis
+  namespace: spark-jobs
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: spark:3.5.1                 # image with your code baked in (or mounted)
+  imagePullPolicy: IfNotPresent
+  mainApplicationFile: local:///opt/spark-apps/exercises/fundamentals/exercise-01-dag-analysis.py
+  sparkVersion: "3.5.1"
+  restartPolicy: { type: Never }
+  # MinIO credentials for s3a:// access
+  driver:
+    cores: 1
+    memory: 2g
+    serviceAccount: spark
+    envFrom:
+      - secretRef: { name: minio-creds }
+  executor:
+    cores: 2
+    instances: 2
+    memory: 2g
+    envFrom:
+      - secretRef: { name: minio-creds }
+  sparkConf:
+    "spark.hadoop.fs.s3a.endpoint": "http://minio.default.svc.cluster.local:9000"
+    "spark.hadoop.fs.s3a.path.style.access": "true"
+    "spark.hadoop.fs.s3a.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem"
+    "spark.hadoop.fs.s3a.aws.credentials.provider": "com.amazonaws.auth.EnvironmentVariableCredentialsProvider"
+    "spark.eventLog.enabled": "true"
+    "spark.eventLog.dir": "s3a://spark-events/"

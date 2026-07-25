@@ -8,7 +8,7 @@
 
 ## exercise-16 (OOM debugging)
 1. A driver OOM is about the **driver JVM** collecting data; executors don't help.
-2. "Container killed by YARN … exceeds memory" → raise `spark.executor.memoryOverhead`.
+2. Pod OOMKilled (exit 137) with the heap not full → raise `spark.executor.memoryOverhead` (which raises the pod memory limit).
 3. PySpark runs Python workers **off-heap**, so overhead (not heap) carries that memory.
 
 ## exercise-17 (task failures)
@@ -18,8 +18,9 @@
 
 ## exercise-18 (FetchFailed)
 1. It's a symptom: the reducer can't fetch blocks because the **map-side executor** is gone.
-2. Dynamic allocation removes executors; without the external shuffle service their
-   shuffle files vanish → reducers get FetchFailed.
+2. Dynamic allocation removes executors; on K8S there's no external shuffle service, so
+   without shuffle tracking (or decommissioning with block migration) their shuffle files
+   vanish → reducers get FetchFailed.
 3. Target ~100–200MB per shuffle partition.
 
 ## exercise-19 (serialization)

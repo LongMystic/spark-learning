@@ -46,8 +46,8 @@ print("Incident playbook (walk through mentally for a scripted outage)")
 print("=" * 60)
 print("""
   1. ACKNOWLEDGE  who/what/impact/since-when
-  2. ASSESS       failing | hung | slow?  which stage? (Spark UI / yarn logs)
-  3. STABILIZE    fastest safe mitigation (idempotent re-run, higher queue,
+  2. ASSESS       failing | hung | slow?  which stage? (Spark UI / kubectl logs + get pods)
+  3. STABILIZE    fastest safe mitigation (idempotent re-run, namespace w/ free quota,
                   AQE skew join, quarantine bad partition, serve last snapshot)
   4. DIAGNOSE     root cause via Days 15-20
   5. FIX          permanent change + test

@@ -59,10 +59,10 @@ Run these from a scheduled Spark job (Airflow, Day 35). Keep enough snapshot his
 
 ## 💡 Key Insights for On-Premise
 ### 1. Compaction competes for cluster resources
-Schedule it in a low-traffic window and/or a dedicated YARN queue — it's a full read+rewrite. Copy-on-write vs merge-on-read modes trade write cost vs read cost; pick per table access pattern.
+Schedule it in a low-traffic window and/or a dedicated namespace (low-priority quota) — it's a full read+rewrite. Copy-on-write vs merge-on-read modes trade write cost vs read cost; pick per table access pattern.
 
 ### 2. Expiry is what actually frees storage
-`expire_snapshots` (not just `DELETE`) is what lets old data files be removed. Without it, time travel keeps every version forever and HDFS fills up.
+`expire_snapshots` (not just `DELETE`) is what lets old data files be removed. Without it, time travel keeps every version forever and the object store / bucket fills up.
 
 ## 🎯 Practical Exercises
 
@@ -89,7 +89,7 @@ Schedule it in a low-traffic window and/or a dedicated YARN queue — it's a ful
 ## 🚨 Common Issues & Solutions
 
 ### Issue 1: Storage keeps growing despite deletes
-**Symptom**: HDFS fills up.
+**Symptom**: the object store / bucket fills up.
 **Solution**: old snapshots pin old files — run `expire_snapshots` + `remove_orphan_files`.
 
 ### Issue 2: MERGE is slow

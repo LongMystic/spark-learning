@@ -12,7 +12,7 @@
 The Spark Thrift Server is a **long-running Spark application** that exposes a **HiveServer2-compatible JDBC/ODBC endpoint**. BI tools (Superset), SQL clients (`beeline`), and DBT connect to it and run SQL that executes on Spark — sharing **one** SparkContext and its executors across all users.
 
 ```
-Superset / beeline / DBT  --JDBC(10000)-->  Thrift Server (driver + shared SparkContext)  -->  YARN executors
+Superset / beeline / DBT  --JDBC(10000)-->  Thrift Server (driver pod + shared SparkContext)  -->  executor pods (Kubernetes)
 ```
 
 ### 2. STS vs a fresh spark-submit
@@ -24,20 +24,30 @@ Superset / beeline / DBT  --JDBC(10000)-->  Thrift Server (driver + shared Spark
 | Risk | one bad query can hurt everyone | isolated blast radius |
 
 ### 3. Starting it
+The STS is a **long-running driver** — on Kubernetes it runs as a **driver pod** (managed by a `Deployment`/`StatefulSet`) in **client mode**, so the JDBC endpoint stays put while executor pods come and go. A **headless Service** gives the driver a stable DNS name so executor pods can reach it (`spark.driver.host`).
+
 ```bash
+# Runs inside the driver pod (its container command):
 $SPARK_HOME/sbin/start-thriftserver.sh \
-  --master yarn --deploy-mode client \
+  --master k8s://https://<api-server>:6443 --deploy-mode client \
   --hiveconf hive.server2.thrift.port=10000 \
+  --conf spark.kubernetes.namespace=spark-jobs \
+  --conf spark.kubernetes.container.image=<registry>/spark:3.5.1 \
+  --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
+  --conf spark.driver.host=spark-thrift.spark-jobs.svc.cluster.local \
+  --conf spark.driver.port=7078 \
   --conf spark.sql.adaptive.enabled=true \
   --conf spark.dynamicAllocation.enabled=true \
+  --conf spark.dynamicAllocation.shuffleTracking.enabled=true \
   --conf spark.dynamicAllocation.maxExecutors=50 \
   --conf spark.sql.thriftServer.incrementalCollect=true
 # connect:  beeline -u 'jdbc:hive2://sts-host:10000'
 ```
+> Client mode (not cluster mode) is deliberate: you want the driver — which *is* the JDBC server — to be the pod you manage and expose via a Service, and it launches executor pods itself.
 
 ## 🔍 Deep Dive: Tuning for concurrency
 
-- **Dynamic allocation + external shuffle service** — so idle BI periods release executors and bursts scale up (Day 18).
+- **Dynamic allocation + shuffle tracking** — so idle BI periods release executor pods and bursts scale up (Day 18). Kubernetes has **no external shuffle service**, so set `spark.dynamicAllocation.shuffleTracking.enabled=true` to keep executors holding shuffle blocks alive.
 - **`spark.sql.thriftServer.incrementalCollect=true`** — streams large result sets back incrementally instead of collecting all to the driver (prevents driver OOM from a `SELECT *`).
 - **Scheduler pools (fair scheduler)** — isolate users/teams so one heavy query doesn't starve dashboards:
   ```bash
@@ -56,7 +66,7 @@ Every query's planning and result collection happens in the **single STS driver*
 Run a **separate** Thrift Server for interactive dashboards vs. heavy ad-hoc analytics, so a runaway analytics query can't freeze executive dashboards. Isolation by process is simpler than perfect fair-scheduler tuning.
 
 ### 3. HA & restarts
-STS is a single JVM — if it dies, all sessions drop. Run it under a supervisor (systemd / Ambari / CM), and consider a load balancer over two instances for HA.
+STS is a single JVM — if it dies, all sessions drop. Run the driver pod under a **Deployment/StatefulSet** so Kubernetes restarts it automatically, expose it through a **Service**, and consider a load-balanced pair of STS pods for HA.
 
 ## 🎯 Practical Exercises
 
@@ -94,7 +104,7 @@ STS is a single JVM — if it dies, all sessions drop. Run it under a supervisor
 ## 📝 Key Takeaways
 1. STS is a long-lived Spark app exposing HiveServer2 JDBC for BI/DBT.
 2. One shared SparkContext — great for interactivity, risky for isolation.
-3. Enable dynamic allocation + external shuffle service + AQE.
+3. Enable dynamic allocation + shuffle tracking (no external shuffle service on K8S) + AQE.
 4. Use `incrementalCollect` and result guards to protect the shared driver.
 5. Separate STS instances (or fair pools) isolate workloads; plan for HA.
 

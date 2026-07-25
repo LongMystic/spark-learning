@@ -471,7 +471,7 @@ spark.conf.set("spark.memory.storageFraction", "0.3")  # Less for cache
 
 ## 🔗 Next Steps
 
-- **Day 9**: Resource Allocation and YARN Integration
+- **Day 9**: Resource Allocation and Kubernetes Integration
 - Practice: Calculate optimal config for your cluster
 - Experiment: Try different executor sizes
 - Document: Create configuration templates

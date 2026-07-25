@@ -2,9 +2,10 @@
 Tiny Kafka producer for the Structured Streaming lessons (Days 30-31).
 
 Emits synthetic JSON transaction events to a Kafka topic so the streaming
-exercises have something to consume. Requires the `kafka` service:
+exercises have something to consume. Requires the `kafka` service on minikube:
 
-    docker compose -f environment/docker-compose.yml --profile streaming up -d
+    kubectl apply -f environment/k8s/06-kafka.yaml
+    kubectl -n spark-jobs port-forward svc/kafka 9092:9092 &
     python environment/produce_stream.py --rate 20 --topic transactions
 
 Each message value is JSON:

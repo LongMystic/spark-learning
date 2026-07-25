@@ -23,7 +23,7 @@ Job           --(stage exhausts retries)-->  fails the whole job
 |-------------------------|----------------------------------|
 | Executor lost / node hiccup | `NullPointerException` in a UDF on a specific row |
 | Network blip, `FetchFailed` | Bad cast / parse on specific data |
-| Preempted container | Divide-by-zero, schema mismatch |
+| Preempted / evicted pod | Divide-by-zero, schema mismatch |
 | Transient disk-full | Non-serializable closure |
 
 If the **same task index** fails all 4 attempts with the **same exception**, it's deterministic — a data or code bug, not infrastructure.
@@ -52,7 +52,7 @@ suspect.where("amount IS NULL OR quantity = 0").show(truncate=False)
 ## 💡 Key Insights for On-Premise
 
 ### 1. Blacklisting / exclusion
-`spark.excludeOnFailure.enabled=true` (a.k.a. blacklisting) stops scheduling on a node that keeps failing tasks — invaluable when one worker has a bad disk. On shared clusters, one flaky NodeManager can fail many jobs; exclusion contains the blast radius.
+`spark.excludeOnFailure.enabled=true` (a.k.a. blacklisting) stops scheduling on a node that keeps failing tasks — invaluable when one worker node has a bad disk. Exclusion still works **per-node** on Kubernetes. On shared clusters, one flaky node can fail many jobs; exclusion contains the blast radius, and the platform team can also `cordon`/`taint` the bad node so the scheduler stops placing any pods there.
 
 ### 2. Don't mask bugs with retries
 Raising `spark.task.maxFailures` to 16 to "get past" a failure usually just delays a deterministic error by 4×. Fix the row/code instead.

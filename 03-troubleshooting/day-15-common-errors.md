@@ -3,7 +3,7 @@
 ## 🎯 Learning Objectives
 - Recognize the handful of error families that cause ~90% of Spark failures
 - Read a Spark stack trace top-down and find the *real* cause (not the noise)
-- Navigate driver logs, executor logs, and YARN aggregated logs on-premise
+- Navigate driver-pod logs, executor-pod logs, and your log-aggregation stack on-premise Kubernetes
 - Build a fast triage routine you can run on any failed job
 
 ## 📚 Core Concepts
@@ -12,11 +12,11 @@
 
 | Family | Signature exception | Usually caused by |
 |--------|--------------------|-------------------|
-| Memory | `OutOfMemoryError`, `ExecutorLostFailure (killed by YARN ... exceeds memory)` | skew, huge shuffle, `collect()`, wide rows |
+| Memory | `OutOfMemoryError`, `ExecutorLostFailure` + pod `OOMKilled` (exit 137) | skew, huge shuffle, `collect()`, wide rows |
 | Shuffle | `FetchFailedException`, `MetadataFetchFailedException` | lost executor, disk full, network, GC pauses |
 | Serialization | `NotSerializableException`, `Task not serializable` | capturing non-serializable objects in a closure/UDF |
 | Data | `AnalysisException`, `SparkArithmeticException`, `NumberFormatException` | schema mismatch, bad casts, nulls, divide-by-zero |
-| Resource | `ApplicationMaster ... FAILED`, container pending forever | queue full, wrong executor sizing, YARN limits |
+| Resource | driver pod failed, executor pods stuck `Pending` forever | quota exhausted, wrong pod sizing, `LimitRange` caps |
 
 **Key Points:**
 - The *first* exception in the driver log is often a **symptom**; the *root cause* is usually an earlier failure on an executor.
@@ -40,32 +40,41 @@ Read it as: **what failed** (Task 12, stage 8) → **where** (executor 5 on work
 ### Step-by-Step Process
 1. **Read the driver's final exception** — note the failing *stage* and *task*.
 2. **Open Spark UI → Stages → the failed stage** — is one task an outlier (skew)? Big shuffle read? Spill?
-3. **Open the failed task's executor log** (UI → Executors → stderr, or YARN logs) — find `Caused by:`.
+3. **Open the failed task's executor log** (UI → Executors → stderr, or `kubectl logs`) — find `Caused by:`.
 4. **Classify** into one of the families above.
 5. **Correlate** with resources: GC time, container kills, disk usage on `spark.local.dir`.
 6. **Form one hypothesis, change one thing, re-run.** Never change five configs at once.
 
-### Getting the logs on-premise (YARN)
+### Getting the logs on-premise (Kubernetes)
+Pods are **ephemeral** — once a pod is deleted its stdout/stderr is gone. So you read logs two ways: live via `kubectl` while the pod exists, and after the fact from your log-aggregation stack (Fluent Bit → Loki/Elasticsearch) plus the Spark History Server replaying event logs from `s3a://`.
 ```bash
-# Aggregated logs for a finished application
-yarn logs -applicationId application_1699999999999_1234 > app.log
+# Driver pod log (cluster mode: the driver runs as a pod)
+kubectl -n spark-jobs logs <driver-pod>
 
-# Just one container / executor
-yarn logs -applicationId application_..._1234 -containerId container_..._000005
+# All executor pods for the app (they carry a spark-role label)
+kubectl -n spark-jobs logs -l spark-role=executor
 
-# The RM UI: http://resource-manager:8088  -> your app -> logs
-# History server for the Spark UI after the app ends: http://history-server:18080
+# A crashed/restarted pod: read the PREVIOUS container's log before it's gone
+kubectl -n spark-jobs logs <pod> --previous
+
+# Why a pod died (OOMKilled, scheduling, image pull): the events + status
+kubectl -n spark-jobs describe pod <pod>
+
+# After the app ends, pods are gone -> query the aggregation stack, e.g. Loki:
+#   {namespace="spark-jobs", app="daily-etl"} | logfmt
+# History server for the Spark UI after the app ends (reads s3a://spark-events):
+#   http://spark-history:18080
 ```
 
 ## 💡 Key Insights for On-Premise
 
 ### 1. Log locations differ from cloud
 - **Driver (client mode)**: your terminal / the launching process's stdout+stderr.
-- **Driver (cluster mode)**: inside the AM container — use `yarn logs`.
-- **Executors**: on each NodeManager under `yarn.nodemanager.log-dirs`, aggregated to HDFS after the app ends.
+- **Driver (cluster mode)**: the driver pod — `kubectl logs <driver-pod>` while it lives, then the aggregation stack.
+- **Executors**: each runs in its own pod; `kubectl logs -l spark-role=executor` live, and the node's log agent (Fluent Bit/Filebeat) scrapes stdout/stderr into Loki/EFK for after-the-fact search.
 
-### 2. Log aggregation timing
-Logs may only appear in `yarn logs` **after** the app finishes. For a hung job, read the live container logs from the NodeManager UI instead of waiting.
+### 2. Pods are ephemeral — ship logs before they vanish
+`kubectl logs` only works while the pod exists; a completed/deleted executor pod takes its logs with it. That's why you (a) use `--previous` to catch a just-crashed container, and (b) rely on centralized aggregation + `spark.eventLog.dir=s3a://spark-events` so the History Server can replay the run after every pod is gone.
 
 ## 🎯 Practical Exercises
 
@@ -106,15 +115,15 @@ Logs may only appear in `yarn logs` **after** the app finishes. For a hung job, 
 2. Read traces bottom-up to the last `Caused by:`.
 3. The driver shows the symptom; the executor log shows the cause.
 4. One hypothesis, one change, one re-run.
-5. On YARN, `yarn logs -applicationId` is your primary tool.
+5. On Kubernetes, `kubectl logs` (with `--previous`) + your aggregation stack are your primary tools; pods are ephemeral.
 
 ## 🔗 Next Steps
 - **Day 16**: OOM Debugging (Driver vs Executor)
-- Practice: pull `yarn logs` for one real failed job at work and classify it.
+- Practice: pull `kubectl logs` (and `--previous`) for one real failed job at work and classify it.
 
 ## 📚 Additional Resources
 - Spark Monitoring and Instrumentation docs
-- YARN log aggregation documentation
+- Kubernetes logging architecture + your cluster's log-aggregation stack (Fluent Bit → Loki/EFK)
 
 ---
 

@@ -52,8 +52,9 @@ print(df.queryExecution.executedPlan)
 ```
 
 ### Check Spark UI
-- Default: `http://driver:4040`
-- YARN: `http://resource-manager:8088`
+- Default (live driver): `kubectl -n spark-jobs port-forward <driver-pod> 4040` → `http://localhost:4040`
+- Pods: `kubectl -n spark-jobs get pods`
+- History Server: `http://localhost:18080` (port-forward)
 
 ## 🔍 Common Debugging Commands
 

@@ -51,7 +51,7 @@ print("files:", scan.rdd.getNumPartitions())    # ~1 partition per file
 
 ## 💡 Key Insights for On-Premise
 ### 1. Wall-clock ≠ work
-A job "taking 20 min" might be 18 min queued in YARN waiting for containers. Check the app's *submit → first task* gap and the RM queue before blaming Spark.
+A job "taking 20 min" might be 18 min with executor pods stuck `Pending` waiting for the scheduler or blocked by the namespace quota. Check the app's *submit → first task* gap and `kubectl get pods` / `kubectl describe pod` (and the namespace `ResourceQuota`) before blaming Spark.
 
 ### 2. Locality levels matter
 Tasks running at `ANY` instead of `NODE_LOCAL` mean data is fetched across the network. `spark.locality.wait` trades a short scheduling delay for better locality on busy clusters.
@@ -95,7 +95,7 @@ Tasks running at `ANY` instead of `NODE_LOCAL` mean data is fetched across the n
 2. Max-≫-median task time = skew; non-zero spill = memory pressure.
 3. Check files-read and pushed-filters for I/O problems.
 4. Verify the join strategy actually chosen.
-5. Separate YARN queue wait from real Spark execution time.
+5. Separate pod-scheduling/quota wait (Pending) from real Spark execution time.
 
 ## 🔗 Next Steps
 - **Day 21**: Production Incident Response

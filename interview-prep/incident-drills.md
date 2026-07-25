@@ -14,8 +14,9 @@ Do these out loud or on paper, ~5 minutes each.
 FetchFailed is a symptom. First **stabilize**: is it a one-off node blip? Check the
 Executors timeline around the failure — did worker-12 die? Why (OOM/kill/GC)? If it's a
 transient node loss and the write is idempotent, **re-run** to restore the SLA. Then
-root-cause the executor loss (Day 16/18): if OOM, right-size partitions/overhead; ensure
-the external shuffle service is on for dynamic allocation. Prevent: alert on data-volume
+root-cause the executor loss (Day 16/18): if OOM, right-size partitions/overhead; since K8S
+has no external shuffle service, ensure **shuffle tracking** is on for dynamic allocation
+(`spark.dynamicAllocation.shuffleTracking.enabled=true`). Prevent: alert on data-volume
 growth that pushed it over the edge.</details>
 
 ---
@@ -35,10 +36,10 @@ STS, and cap result sizes. Prevent: BI reads marts, not facts.</details>
 
 ### Drill 3 — "It worked in dev, OOMs in prod"
 **Symptom**: A PySpark job with a Pandas UDF succeeds on sample data but on the full
-dataset executors die with `Container killed by YARN … 9.1 GB of 9 GB physical memory used`.
+dataset executor pods are **OOMKilled** (exit 137), using 9.1 GB of their 9 GB limit.
 
 <details><summary>Approach</summary>
-"Container killed" = **overhead/off-heap**, not heap — and Pandas UDFs run Python
+**OOMKilled (exit 137)** = **overhead/off-heap**, not heap — and Pandas UDFs run Python
 off-heap. Raise `spark.executor.memoryOverhead` (15–20%+). Also check skew (one giant
 `applyInPandas` group?) and reduce columns fed to the UDF. Verify pyarrow/pandas versions
 match across executors. Prevent: overhead sizing baked into the job's submit config.</details>

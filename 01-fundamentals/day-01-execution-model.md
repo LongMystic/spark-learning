@@ -104,11 +104,11 @@ grouped.write.parquet("output/")
 
 ## 💡 Key Insights for On-Premise
 
-### 1. Resource Manager Integration (YARN)
+### 1. Cluster Manager Integration (Kubernetes)
 
-- **Application Master**: Coordinates with YARN ResourceManager
-- **Container Allocation**: YARN allocates containers for executors
-- **Dynamic Allocation**: Can request/release executors based on load
+- **Driver pod**: in cluster mode the Spark driver runs as a pod and requests executor pods directly from the Kubernetes API server (the role YARN's ApplicationMaster played)
+- **Pod allocation**: the **kube-scheduler** places each requested pod on a node with free allocatable capacity; a **pod** is the unit of allocation (one driver pod + N executor pods, the analog of a YARN container)
+- **Dynamic Allocation**: the driver can request/release executor pods based on load — on K8S enable **shuffle tracking** (`spark.dynamicAllocation.shuffleTracking.enabled=true`) since there is no external shuffle service
 
 ### 2. Memory Management
 

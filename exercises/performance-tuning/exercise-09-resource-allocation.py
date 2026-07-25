@@ -1,10 +1,10 @@
 """
-Exercise 9: Resource Allocation and YARN Integration
+Exercise 9: Resource Allocation and Kubernetes Integration
 Purpose: Understand dynamic allocation and resource management
 
 Instructions:
 1. Configure static vs dynamic allocation
-2. Monitor resource allocation in YARN
+2. Monitor resource allocation on Kubernetes (pods, requests, limits)
 3. Compare resource utilization patterns
 """
 
@@ -17,10 +17,12 @@ from common.spark_session import get_spark, read_table
 
 from pyspark.sql.functions import col, sum as spark_sum
 
-# NOTE: allocation settings (executor.instances, dynamicAllocation.*, yarn.queue)
-# only take effect at submit time on a YARN cluster. Locally we just SET and PRINT
-# them so you can see exactly what you'd pass to spark-submit. `show()` reads a
-# conf back with a friendly default when it isn't applicable locally.
+# NOTE: allocation settings (executor.instances, dynamicAllocation.*,
+# spark.kubernetes.namespace) only take effect at submit time on a Kubernetes
+# cluster (spark-submit --master k8s:// or a SparkApplication CRD). Locally we
+# just SET and PRINT them so you can see exactly what you'd pass at submit time.
+# `show()` reads a conf back with a friendly default when it isn't applicable
+# locally.
 spark = get_spark("Resource Allocation Exercise")
 
 
@@ -34,7 +36,7 @@ print("Exercise 1: Static Allocation")
 print("=" * 50)
 
 spark.conf.set("spark.executor.instances", "10")
-print("Static Allocation Configuration (submit-time on YARN):")
+print("Static Allocation Configuration (submit-time on Kubernetes):")
 print("  spark.dynamicAllocation.enabled = false")
 print(f"  spark.executor.instances = {show('spark.executor.instances')}")
 
@@ -54,6 +56,10 @@ print("=" * 50)
 
 dynamic_conf = {
     "spark.dynamicAllocation.enabled": "true",
+    # REQUIRED on K8S: there is NO external shuffle service, so shuffle tracking
+    # keeps executors holding shuffle blocks alive instead of losing that data.
+    "spark.dynamicAllocation.shuffleTracking.enabled": "true",
+    "spark.dynamicAllocation.shuffleTracking.timeout": "30m",
     "spark.dynamicAllocation.minExecutors": "5",
     "spark.dynamicAllocation.maxExecutors": "30",
     "spark.dynamicAllocation.initialExecutors": "10",
@@ -64,8 +70,9 @@ dynamic_conf = {
 for k, v in dynamic_conf.items():
     spark.conf.set(k, v)
 
-print("Dynamic Allocation Configuration (submit-time on YARN):")
+print("Dynamic Allocation Configuration (submit-time on Kubernetes):")
 print(f"  Dynamic Allocation: {show('spark.dynamicAllocation.enabled')}")
+print(f"  Shuffle Tracking (required on K8S): {show('spark.dynamicAllocation.shuffleTracking.enabled')}")
 print(f"  Min Executors: {show('spark.dynamicAllocation.minExecutors')}")
 print(f"  Max Executors: {show('spark.dynamicAllocation.maxExecutors')}")
 print(f"  Initial Executors: {show('spark.dynamicAllocation.initialExecutors')}")
@@ -87,17 +94,20 @@ print("=" * 50)
 
 print("""
 Instructions for monitoring:
-1. Open Spark UI: http://driver:4040
-2. Navigate to Executors tab
-3. Observe:
+1. Open the Spark UI (port-forward the driver pod):
+     kubectl -n spark-jobs port-forward <driver-pod> 4040
+   Navigate to the Executors tab and observe:
    - Number of executors over time
-   - When executors are added/removed
+   - When executor pods are added/removed
    - Resource utilization per executor
-4. Open YARN ResourceManager UI
-5. Check:
-   - Container allocations
-   - Resource usage per application
-   - Queue utilization
+2. Watch the pods directly with kubectl:
+     kubectl -n spark-jobs get pods -w      # driver + executor pods appear/disappear
+     kubectl top pods -n spark-jobs         # live CPU/mem per pod
+     kubectl -n spark-jobs describe pod <executor-pod>   # requests/limits, events
+3. Check:
+   - Executor pod requests/limits (the allocation unit)
+   - Namespace ResourceQuota utilization
+   - kubectl top nodes (node allocatable vs used)
 """)
 
 # Exercise 4: Different Allocation Strategies
@@ -135,19 +145,21 @@ Check Spark UI:
 - Note: Executors with cached data won't be removed
 """)
 
-# Exercise 6: Queue Configuration
+# Exercise 6: Namespace + ResourceQuota Configuration
 print("\n" + "=" * 50)
-print("Exercise 6: YARN Queue Configuration")
+print("Exercise 6: Namespace + ResourceQuota Configuration")
 print("=" * 50)
 
-# Submit to specific queue (YARN): spark-submit --queue production ...
-spark.conf.set("spark.yarn.queue", "production")
-print(f"  Queue: {show('spark.yarn.queue')}")
+# Submit into a namespace (K8S): spark-submit --conf spark.kubernetes.namespace=production ...
+# Namespaces + ResourceQuota replace YARN queues for multi-tenancy.
+spark.conf.set("spark.kubernetes.namespace", "production")
+print(f"  Namespace: {show('spark.kubernetes.namespace')}")
 print("""
-Note: Queue configuration may require:
-1. YARN queue setup in capacity-scheduler.xml
-2. Appropriate permissions
-3. Queue capacity limits
+Note: Namespace + quota configuration may require:
+1. A Namespace + ResourceQuota (+ LimitRange) manifest applied by the platform team
+   (requests.cpu/memory = guaranteed share; limits.cpu/memory = burst ceiling)
+2. A ServiceAccount + RBAC so the driver can create executor pods
+3. Per-namespace pod/CPU/memory caps enforced by the ResourceQuota
 """)
 
 print("\n" + "=" * 50)
@@ -158,7 +170,7 @@ print("2. What triggers executor addition/removal?")
 print("3. How do cached executors behave differently?")
 print("4. Compare resource utilization: static vs dynamic")
 print("5. What are the trade-offs of each allocation strategy?")
-print("6. How does queue configuration affect resource allocation?")
+print("6. How does namespace + ResourceQuota configuration affect resource allocation?")
 
 # Cleanup
 spark.stop()

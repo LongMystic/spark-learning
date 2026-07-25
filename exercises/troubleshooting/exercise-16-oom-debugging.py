@@ -43,11 +43,12 @@ print("\n" + "=" * 60)
 print("3. Where to look when it DOES OOM")
 print("=" * 60)
 print("""
-  Driver OOM   -> driver/AM log; caused by collect/toPandas/large broadcast.
+  Driver OOM   -> driver-pod log; caused by collect/toPandas/large broadcast.
                   Fix: write out; lower autoBroadcastJoinThreshold; raise driver mem.
-  Executor OOM -> executor log:
+  Executor OOM -> executor-pod log (kubectl logs <pod>):
      'OutOfMemoryError: Java heap space'      -> heap; more partitions / fix skew.
-     'Container killed by YARN ... exceeds'   -> OVERHEAD (off-heap); raise
+     pod OOMKilled (exit 137, kubectl describe -> Reason: OOMKilled), heap not full
+                                              -> OVERHEAD (off-heap); raise
                                                  spark.executor.memoryOverhead
                                                  (esp. PySpark / Pandas UDFs).
   UI: Executors tab -> Peak memory & GC time; Stages tab -> Spill (Memory/Disk).
@@ -55,7 +56,7 @@ print("""
 
 print("Analysis Questions")
 print("1. Why does adding executors NOT help a driver OOM?")
-print("2. If the log says 'container killed by YARN', which knob do you change?")
+print("2. If the pod is OOMKilled (exit 137) with the heap not full, which knob do you change?")
 print("3. Why do PySpark jobs need more memoryOverhead than Scala jobs?")
 
 spark.stop()
