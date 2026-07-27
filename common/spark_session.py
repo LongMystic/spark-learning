@@ -19,6 +19,7 @@ Usage inside an exercise:
 """
 
 import os
+from typing import Optional
 
 
 def repo_root() -> str:
@@ -36,7 +37,7 @@ def table_path(name: str) -> str:
     return os.path.join(data_dir(), name)
 
 
-def get_spark(app_name: str = "spark-learning", extra_conf: dict | None = None):
+def get_spark(app_name: str = "spark-learning", extra_conf: Optional[dict] = None):
     """
     Build (or reuse) a SparkSession with learning-friendly defaults.
 
@@ -61,12 +62,19 @@ def get_spark(app_name: str = "spark-learning", extra_conf: dict | None = None):
     )
 
     if os.environ.get("SPARK_EVENTLOG", "1") == "1":
-        events = os.environ.get("SPARK_EVENTLOG_DIR", os.path.join(repo_root(), "spark-events"))
-        os.makedirs(events, exist_ok=True)
-        builder = (
-            builder.config("spark.eventLog.enabled", "true")
-            .config("spark.eventLog.dir", _as_uri(events))
-        )
+        events_env = os.environ.get("SPARK_EVENTLOG_DIR")
+        if events_env:
+            events_uri = events_env if "://" in events_env else _as_uri(events_env)
+            builder = builder.config("spark.eventLog.enabled", "true").config("spark.eventLog.dir", events_uri)
+        else:
+            master_env = os.environ.get("SPARK_MASTER", "")
+            if not master_env or master_env.startswith("local"):
+                events = os.path.join(repo_root(), "spark-events")
+                try:
+                    os.makedirs(events, exist_ok=True)
+                except OSError:
+                    pass
+                builder = builder.config("spark.eventLog.enabled", "true").config("spark.eventLog.dir", _as_uri(events))
 
     if os.environ.get("ENABLE_ICEBERG", "0") == "1":
         warehouse = os.environ.get("ICEBERG_WAREHOUSE", os.path.join(repo_root(), "iceberg-warehouse"))
@@ -95,7 +103,7 @@ def get_spark(app_name: str = "spark-learning", extra_conf: dict | None = None):
 def read_table(spark, name: str):
     """Read a generated parquet table by name (e.g. 'transactions', 'customers')."""
     path = table_path(name)
-    if not os.path.exists(path):
+    if "://" not in path and not os.path.exists(path):
         raise FileNotFoundError(
             f"Table '{name}' not found at {path}.\n"
             f"Generate the sample data first:\n"

@@ -29,9 +29,9 @@ metadata:
 spec:
   hard:
     requests.cpu: "8"          # guaranteed share (scale down for a laptop)
-    requests.memory: 16Gi
+    requests.memory: 12Gi
     limits.cpu: "12"           # burst ceiling
-    limits.memory: 24Gi
+    limits.memory: 16Gi
     pods: "20"
 ---
 apiVersion: v1

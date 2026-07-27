@@ -20,19 +20,45 @@ spec:
   sparkVersion: "3.5.1"
   restartPolicy: { type: Never }
   # MinIO credentials for s3a:// access
+  volumes:
+    - name: code-dag-analysis
+      configMap:
+        name: spark-code-dag-analysis
+    - name: code-common
+      configMap:
+        name: spark-code-common
   driver:
     cores: 1
     memory: 2g
     serviceAccount: spark
+    env:
+      - name: SPARK_EVENTLOG_DIR
+        value: "s3a://spark-events/"
     envFrom:
       - secretRef: { name: minio-creds }
+    volumeMounts:
+      - name: code-dag-analysis
+        mountPath: /opt/spark-apps/exercises/fundamentals
+      - name: code-common
+        mountPath: /opt/spark-apps/common
   executor:
     cores: 2
     instances: 2
     memory: 2g
+    env:
+      - name: SPARK_EVENTLOG_DIR
+        value: "s3a://spark-events/"
     envFrom:
       - secretRef: { name: minio-creds }
+    volumeMounts:
+      - name: code-dag-analysis
+        mountPath: /opt/spark-apps/exercises/fundamentals
+      - name: code-common
+        mountPath: /opt/spark-apps/common
   sparkConf:
+    # hadoop-aws + aws-java-sdk-bundle are not in apache/spark:3.5.1 — pull at runtime.
+    "spark.jars.packages": "org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262"
+    "spark.jars.ivy": "/tmp/.ivy2"
     "spark.hadoop.fs.s3a.endpoint": "http://minio.default.svc.cluster.local:9000"
     "spark.hadoop.fs.s3a.path.style.access": "true"
     "spark.hadoop.fs.s3a.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem"

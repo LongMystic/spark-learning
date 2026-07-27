@@ -16,6 +16,20 @@ spec:
       labels: { app: spark-history }
     spec:
       serviceAccountName: spark
+      initContainers:
+        - name: fetch-s3-jars
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              curl -sL -o /extra-jars/hadoop-aws-3.3.4.jar \
+                https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar
+              curl -sL -o /extra-jars/aws-java-sdk-bundle-1.12.262.jar \
+                https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar
+          volumeMounts:
+            - name: extra-jars
+              mountPath: /extra-jars
       containers:
         - name: spark-history
           image: spark:3.5.1
@@ -32,6 +46,16 @@ spec:
                 -Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
           ports:
             - { containerPort: 18080, name: web }
+          volumeMounts:
+            - name: extra-jars
+              mountPath: /opt/spark/jars/hadoop-aws-3.3.4.jar
+              subPath: hadoop-aws-3.3.4.jar
+            - name: extra-jars
+              mountPath: /opt/spark/jars/aws-java-sdk-bundle-1.12.262.jar
+              subPath: aws-java-sdk-bundle-1.12.262.jar
+      volumes:
+        - name: extra-jars
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

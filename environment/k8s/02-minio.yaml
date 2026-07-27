@@ -14,6 +14,18 @@ stringData:
   AWS_ACCESS_KEY_ID: minioadmin
   AWS_SECRET_ACCESS_KEY: minioadmin
 ---
+# Same credentials duplicated into spark-jobs namespace — Kubernetes Secrets
+# are namespace-scoped, so pods in spark-jobs cannot reference a default-ns Secret.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-creds
+  namespace: spark-jobs
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: minioadmin
+  AWS_SECRET_ACCESS_KEY: minioadmin
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

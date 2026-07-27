@@ -51,12 +51,12 @@ bash environment/setup.sh          # starts minikube, installs the operator, Min
 
 ```powershell
 minikube start --cpus=4 --memory=8192 --driver=docker
+kubectl apply -f environment/k8s/00-namespaces-quota.yaml          # namespaces must exist first
 helm repo add spark-operator https://kubeflow.github.io/spark-operator
 helm repo update
 helm upgrade --install spark-operator spark-operator/spark-operator `
   --namespace spark-operator --create-namespace --set "spark.jobNamespaces={spark-jobs}"
 docker pull apache/spark:3.5.1; minikube image load apache/spark:3.5.1
-kubectl apply -f environment/k8s/00-namespaces-quota.yaml
 kubectl apply -f environment/k8s/01-spark-rbac.yaml
 kubectl apply -f environment/k8s/02-minio.yaml
 kubectl apply -f environment/k8s/03-spark-history.yaml

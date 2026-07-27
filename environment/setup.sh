@@ -11,9 +11,12 @@ SPARK_IMAGE="spark:3.5.1"
 NS="spark-jobs"
 
 echo "==> 1/6  Start minikube (4 CPU / 8g is comfortable for the exercises)"
-minikube start --cpus=4 --memory=8192 --driver=docker
+minikube start
 
-echo "==> 2/6  Install the Spark Operator (kubeflow) via Helm"
+echo "==> 2/7  Create namespaces and quotas (must exist before Spark Operator install)"
+kubectl apply -f environment/k8s/00-namespaces-quota.yaml
+
+echo "==> 3/7  Install the Spark Operator (kubeflow) via Helm"
 helm repo add spark-operator https://kubeflow.github.io/spark-operator >/dev/null 2>&1 || true
 helm repo update >/dev/null
 helm upgrade --install spark-operator spark-operator/spark-operator \
@@ -21,27 +24,28 @@ helm upgrade --install spark-operator spark-operator/spark-operator \
   --set "spark.jobNamespaces={${NS}}" \
   --set webhook.enable=true
 
-echo "==> 3/6  Load a Spark image into the minikube node"
-# Pull an image that bundles the S3A/hadoop-aws jars, then load it into minikube.
+echo "==> 4/7  Load a Spark image into the minikube node"
+# Pull the base Spark image and load it into minikube.
+# Note: apache/spark:3.5.1 does NOT include hadoop-aws jars; they are added
+# via initContainers in the K8s manifests (03-spark-history.yaml, etc.).
 docker pull apache/spark:3.5.1
 minikube image load apache/spark:3.5.1
 minikube image tag apache/spark:3.5.1 "${SPARK_IMAGE}" 2>/dev/null || true
 
-echo "==> 4/6  Apply namespaces, quotas, RBAC, MinIO, History Server"
-kubectl apply -f environment/k8s/00-namespaces-quota.yaml
+echo "==> 5/7  Apply RBAC, MinIO, History Server"
 kubectl apply -f environment/k8s/01-spark-rbac.yaml
 kubectl apply -f environment/k8s/02-minio.yaml
 kubectl -n default rollout status deploy/minio --timeout=180s
 kubectl apply -f environment/k8s/03-spark-history.yaml
 
-echo "==> 5/6  Create the MinIO buckets (warehouse, spark-events)"
-kubectl -n default run mc --rm -i --restart=Never --image=minio/mc:latest -- \
-  sh -c '
+echo "==> 6/7  Create the MinIO buckets (warehouse, spark-events)"
+kubectl -n default run mc --rm -i --restart=Never --image=minio/mc:latest \
+  --command -- /bin/sh -c '
     mc alias set local http://minio.default.svc.cluster.local:9000 minioadmin minioadmin &&
     mc mb -p local/warehouse local/spark-events || true
   '
 
-echo "==> 6/6  Done. Handy commands:"
+echo "==> 7/7  Done. Handy commands:"
 cat <<'EOF'
   kubectl -n spark-jobs get pods
   kubectl -n spark-jobs port-forward svc/spark-history 18080:18080   # History UI
