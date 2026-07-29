@@ -2,7 +2,7 @@
 Exercise 24: UDF Performance — three ways to do one transform
 Purpose: Compare built-in expression vs Python UDF vs Pandas UDF (plan + boundary).
 
-Run:  python exercises/advanced/exercise-24-udf-performance.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

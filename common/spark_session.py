@@ -1,12 +1,10 @@
 """
 Shared SparkSession factory for the Spark Mastery learning path.
 
-Every exercise imports from here so the SAME code runs unchanged whether you are:
-  - on your laptop  (local[*], or the local minikube Kubernetes cluster)
-  - on the on-prem Kubernetes cluster (export SPARK_MASTER=k8s://https://<api-server>:6443)
+Every exercise imports from here so the SAME code runs unchanged on your
+Kubernetes cluster (either minikube or on-prem).
 
 Environment variables (all optional):
-  SPARK_MASTER   default "local[*]"      e.g. "k8s://https://127.0.0.1:8443" (minikube) or a prod API server
   DATA_DIR       default "<repo>/data"    where generate_data.py wrote the parquet tables
                                           (on a cluster, an s3a:// path into MinIO/S3)
   ENABLE_ICEBERG "0"/"1", default "0"     adds Iceberg SQL extensions + a local filesystem catalog
@@ -47,11 +45,9 @@ def get_spark(app_name: str = "spark-learning", extra_conf: Optional[dict] = Non
     """
     from pyspark.sql import SparkSession
 
-    master = os.environ.get("SPARK_MASTER", "local[*]")
-
+    builder = SparkSession.builder.appName(app_name)
     builder = (
-        SparkSession.builder.appName(app_name)
-        .master(master)
+        builder
         # Small, observable defaults. Many lessons deliberately change these.
         .config("spark.sql.adaptive.enabled", "true")
         .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
@@ -66,15 +62,6 @@ def get_spark(app_name: str = "spark-learning", extra_conf: Optional[dict] = Non
         if events_env:
             events_uri = events_env if "://" in events_env else _as_uri(events_env)
             builder = builder.config("spark.eventLog.enabled", "true").config("spark.eventLog.dir", events_uri)
-        else:
-            master_env = os.environ.get("SPARK_MASTER", "")
-            if not master_env or master_env.startswith("local"):
-                events = os.path.join(repo_root(), "spark-events")
-                try:
-                    os.makedirs(events, exist_ok=True)
-                except OSError:
-                    pass
-                builder = builder.config("spark.eventLog.enabled", "true").config("spark.eventLog.dir", _as_uri(events))
 
     if os.environ.get("ENABLE_ICEBERG", "0") == "1":
         warehouse = os.environ.get("ICEBERG_WAREHOUSE", os.path.join(repo_root(), "iceberg-warehouse"))
@@ -89,7 +76,7 @@ def get_spark(app_name: str = "spark-learning", extra_conf: Optional[dict] = Non
             # any Hadoop FileSystem, incl. local file:// and s3a://) — NOT the YARN/HDFS
             # stack. On the cluster point the warehouse at s3a://warehouse/iceberg instead.
             .config("spark.sql.catalog.local.type", "hadoop")
-            .config("spark.sql.catalog.local.warehouse", _as_uri(warehouse))
+            .config("spark.sql.catalog.local.warehouse", "s3a://warehouse")
         )
 
     for key, value in (extra_conf or {}).items():
@@ -107,7 +94,7 @@ def read_table(spark, name: str):
         raise FileNotFoundError(
             f"Table '{name}' not found at {path}.\n"
             f"Generate the sample data first:\n"
-            f"    python environment/generate_data.py --scale small"
+            f"    Generate the sample data first using the Kubernetes data generation manifest"
         )
     return spark.read.parquet(path)
 

@@ -4,7 +4,7 @@ Purpose: A --run-date-driven job that writes only that date's partition, so
 Airflow retries and backfills are safe. This is exactly what a SparkSubmitOperator
 would launch with application_args=["--run-date", "{{ ds }}"].
 
-Run:  python exercises/production/exercise-35-airflow-job.py --run-date 2026-07-21
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import argparse

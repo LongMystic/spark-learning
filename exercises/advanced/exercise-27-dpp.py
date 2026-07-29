@@ -6,7 +6,7 @@ Our sample `transactions` fact is partitioned by txn_date. We build a small
 "date dimension" filtered to a few dates, join on txn_date, and look for a
 dynamic pruning filter on the fact scan.
 
-Run:  python exercises/advanced/exercise-27-dpp.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

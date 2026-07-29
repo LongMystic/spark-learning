@@ -27,9 +27,9 @@ By the end of this journey, you will be able to:
 # 1. Install
 pip install -r environment/requirements.txt
 # 2. Generate laptop-friendly sample data (~1M rows)
-python environment/generate_data.py --scale small
+See environment/README.md for data generation
 # 3. Run Day 1's exercise and open http://localhost:4040
-python exercises/fundamentals/exercise-01-dag-analysis.py
+kubectl apply -f environment/k8s/05-example-sparkapplication.yaml
 ```
 
 Prefer a real cluster feel? Use the [minikube Kubernetes cluster](environment/README.md)

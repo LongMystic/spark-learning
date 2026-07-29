@@ -2,7 +2,7 @@
 Exercise 15: Error Triage
 Purpose: Trigger one error from each family and practice classifying from the trace.
 
-Run:  python exercises/troubleshooting/exercise-15-error-triage.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 Each block is wrapped in try/except so the script runs end-to-end and prints the
 exception TYPE + which family it belongs to. Read the full traceback for each.
 """

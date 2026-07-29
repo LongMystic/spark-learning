@@ -6,8 +6,8 @@ This guide will help you get started with your structured learning path.
 
 ## 📋 Prerequisites
 
-You need **one** of these — no production cluster required:
-- **Local (recommended to start)**: Python 3.9+ and `pip install -r environment/requirements.txt`, OR minikube for the [Kubernetes cluster](environment/README.md).
+You need **one** of these:
+- **Kubernetes cluster (recommended to start)**: minikube (see [environment/README.md](environment/README.md)).
 - **On-prem**: access to your Spark-on-Kubernetes cluster (kubectl) and the Spark UI.
 
 Plus basic familiarity with Spark syntax and architecture (you have this! ✅).
@@ -125,26 +125,22 @@ Full instructions: [environment/README.md](environment/README.md). In short:
 
 ### 1. Install & generate data
 
-```bash
-pip install -r environment/requirements.txt
-python environment/generate_data.py --scale small     # writes sample tables to ./data
-```
+Follow the instructions in `environment/README.md` to run the data generation job on your Kubernetes cluster, which will write the sample tables to `s3a://warehouse/data`.
 
 ### 2. Exercises use a shared SparkSession
 
-You never hand-build a session — exercises import it, so the same code runs locally or on prod:
+You never hand-build a session — exercises import it, so the same code runs smoothly on your cluster:
 
 ```python
 from common.spark_session import get_spark, read_table
-spark = get_spark("Learning Exercise")     # local[*] by default
+spark = get_spark("Learning Exercise")
 txns  = read_table(spark, "transactions")  # reads the generated sample data
 ```
 
-Run against the cluster instead: `export SPARK_MASTER="k8s://https://<api-server>:6443"` (and point `DATA_DIR` at an `s3a://` path, e.g. `s3a://warehouse/`).
+
 
 ### 3. Access the Spark UI
 
-- Local app (while running): `http://localhost:4040`
 - Docker cluster: master `http://localhost:8080`, history `http://localhost:18080`
 - On K8S: `kubectl -n spark-jobs get pods` to find the driver, then `kubectl -n spark-jobs port-forward <driver-pod> 4040` for the live UI (and port-forward the History Server `:18080` for finished apps)
 

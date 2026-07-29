@@ -1,5 +1,6 @@
 # Core — everything runs on just this.
-pyspark==3.5.1
+# uncomment if not install it in Docker image
+#pyspark==3.5.1
 
 # Optional helpers (nice to have, not required by the exercises):
 pyarrow>=14.0        # Arrow / Pandas UDFs (Days 24, 32)

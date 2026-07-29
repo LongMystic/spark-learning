@@ -6,7 +6,7 @@ exercises have something to consume. Requires the `kafka` service on minikube:
 
     kubectl apply -f environment/k8s/06-kafka.yaml
     kubectl -n spark-jobs port-forward svc/kafka 9092:9092 &
-    python environment/produce_stream.py --rate 20 --topic transactions
+    Run via Kubernetes (see environment/README.md)
 
 Each message value is JSON:
     {"txn_id": 1, "customer_id": 42, "amount": 12.50, "event_time": "2026-07-22T10:00:01"}

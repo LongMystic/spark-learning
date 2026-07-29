@@ -3,7 +3,7 @@ Exercise 19: Serialization & UDF Issues
 Purpose: Trigger a serialization/closure problem, fix it, and compare a Python UDF
 to the equivalent built-in expression (plan + optimizer visibility).
 
-Run:  python exercises/troubleshooting/exercise-19-serialization.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

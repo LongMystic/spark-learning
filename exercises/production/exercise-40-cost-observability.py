@@ -4,7 +4,7 @@ Purpose: Run a job, then read its metrics to fill a simple resource/waste scorec
 Event logging is on by default (common/spark_session.py) so the History Server
 (:18080 in the docker env) can replay this run.
 
-Run:  python exercises/production/exercise-40-cost-observability.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

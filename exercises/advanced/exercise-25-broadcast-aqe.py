@@ -2,7 +2,7 @@
 Exercise 25: Broadcast Strategies & AQE
 Purpose: Toggle broadcast and AQE; watch the join node and post-shuffle partitions change.
 
-Run:  python exercises/advanced/exercise-25-broadcast-aqe.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

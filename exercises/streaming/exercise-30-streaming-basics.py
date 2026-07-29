@@ -3,7 +3,7 @@ Exercise 30: Structured Streaming Fundamentals (no Kafka needed)
 Purpose: Stream from a directory of Parquet files using trigger(availableNow),
 aggregate, and inspect the checkpoint. This is the "streaming-as-batch" pattern.
 
-Run:  python exercises/streaming/exercise-30-streaming-basics.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

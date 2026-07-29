@@ -3,7 +3,7 @@ Exercise 26: Bucketing
 Purpose: Bucket two tables on the same key and confirm the join needs no shuffle.
 Requires catalog (saveAsTable) support; falls back with a note on a bare session.
 
-Run:  python exercises/advanced/exercise-26-bucketing.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

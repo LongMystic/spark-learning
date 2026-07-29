@@ -2,7 +2,7 @@
 Exercise 20: Performance Debugging (Spark UI & SQL tab)
 Purpose: Produce three classic bottlenecks and read them from plans/metrics.
 
-Run:  python exercises/troubleshooting/exercise-20-perf-debugging.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 Then open the SQL tab (http://localhost:4040 while running, or the history
 server afterwards) and inspect each query's per-operator metrics.
 """

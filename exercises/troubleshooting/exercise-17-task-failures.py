@@ -3,7 +3,7 @@ Exercise 17: Task Failure & Retry Analysis
 Purpose: See a DETERMINISTIC task failure (same task, same error every attempt)
 vs. reasoning about transient failures and speculation.
 
-Run:  python exercises/troubleshooting/exercise-17-task-failures.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

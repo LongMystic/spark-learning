@@ -3,7 +3,7 @@ Exercise 29: Spark Thrift Server (concept + local simulation)
 Purpose: Understand the shared-session model and incremental collection; learn the
 beeline connection + configs you'd use on the cluster.
 
-Run:  python exercises/production/exercise-29-thrift-server.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

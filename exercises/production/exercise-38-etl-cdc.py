@@ -3,7 +3,7 @@ Exercise 38: Large-Scale ETL & CDC
 Purpose: bronze -> silver with an incremental watermark, a data-quality gate,
 and an idempotent upsert (MERGE on Iceberg, or dynamic-overwrite fallback).
 
-Run:  python exercises/production/exercise-38-etl-cdc.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 For the MERGE path:  ENABLE_ICEBERG=1 spark-submit --packages ... exercise-38-etl-cdc.py
 """
 

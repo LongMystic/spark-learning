@@ -2,7 +2,7 @@
 Exercise 23: Advanced SQL & Window Functions
 Purpose: Running totals, top-N per group, lag/lead, and one-pass rollup.
 
-Run:  python exercises/advanced/exercise-23-advanced-sql.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

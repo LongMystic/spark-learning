@@ -3,7 +3,7 @@ Exercise 32: PySpark Best Practices
 Purpose: Refactor an RDD/UDF anti-pattern into DataFrame idioms; extract a pure,
 testable transform.
 
-Run:  python exercises/production/exercise-32-pyspark-best-practices.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

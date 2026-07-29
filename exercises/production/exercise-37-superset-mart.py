@@ -3,7 +3,7 @@ Exercise 37: Superset-friendly BI mart
 Purpose: Build a small pre-aggregated mart and compare "dashboard query" cost
 against querying the raw fact table.
 
-Run:  python exercises/production/exercise-37-superset-mart.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

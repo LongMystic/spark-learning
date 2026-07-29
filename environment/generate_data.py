@@ -13,10 +13,10 @@ Tables produced:
   transactions_skewed  fact       (large, ~80% of rows on 5 "hot" customers)
 
 Usage:
-    python environment/generate_data.py --scale small     # ~1M transactions (laptop-friendly)
-    python environment/generate_data.py --scale medium    # ~10M
-    python environment/generate_data.py --scale large      # ~50M (needs a real cluster)
-    python environment/generate_data.py --scale small --overwrite
+    Run via Kubernetes (see environment/README.md)
+
+
+
 
 Point exercises at the result via DATA_DIR (defaults to <repo>/data).
 """

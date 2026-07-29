@@ -3,7 +3,7 @@ Exercise 36: DBT-style models on Spark (staging + incremental fact)
 Purpose: Express what dbt would compile — a staging model and an incremental
 fact model with is_incremental() logic — as Spark SQL, and run it locally.
 
-Run:  python exercises/production/exercise-36-dbt-model.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

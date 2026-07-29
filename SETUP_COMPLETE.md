@@ -33,8 +33,8 @@ Every lesson has a runnable exercise, and you can run all of it on your laptop.
 
 ```bash
 pip install -r environment/requirements.txt
-python environment/generate_data.py --scale small
-python exercises/fundamentals/exercise-01-dag-analysis.py   # open http://localhost:4040
+See environment/README.md for data generation
+kubectl apply -f environment/k8s/05-example-sparkapplication.yaml
 ```
 
 Then read `01-fundamentals/day-01-execution-model.md` and follow `GETTING_STARTED.md`.

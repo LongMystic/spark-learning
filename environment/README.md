@@ -8,34 +8,7 @@ data-locality lessons are observable.
 Storage is **MinIO** (S3-compatible) reached over `s3a://` — there is no HDFS. The
 cluster manager is **Kubernetes**, not YARN.
 
-There are two ways to run. Pick one.
-
----
-
-## Option A — Local PySpark (fastest to start)
-
-Best for reading plans, small data, and most fundamentals/tuning exercises.
-
-```bash
-# 1. Install (a virtualenv is recommended)
-pip install -r environment/requirements.txt
-
-# 2. Generate sample data (~1M rows, laptop-friendly)
-python environment/generate_data.py --scale small
-
-# 3. Run any exercise (from the repo root)
-python exercises/fundamentals/exercise-01-dag-analysis.py
-```
-
-Spark runs in-process as `local[*]`. The per-application UI is at **http://localhost:4040**
-while a job is running. Finished runs are replayed by the History Server (Option B).
-
-> **Windows note:** local PySpark needs Java 8/11/17 and (sometimes) `winutils.exe`/`HADOOP_HOME`.
-> If that's fiddly, use Option B (minikube) — the container image bundles everything.
-
----
-
-## Option B — minikube Kubernetes cluster (most realistic)
+## minikube Kubernetes cluster
 
 A single-node Kubernetes cluster running the **Spark Operator**, **MinIO** (S3 storage),
 and the **History Server**. This is the recommended way to *see* how Spark schedules
@@ -117,22 +90,13 @@ Exercises read tables through [`common/spark_session.py`](../common/spark_sessio
 - `get_spark("name")` — SparkSession with sensible, observable defaults.
 - `read_table(spark, "transactions")` — reads a generated parquet table.
 
-Both honour environment variables so the **same code** runs locally or on the cluster:
+Both honour environment variables so the **same code** runs on the cluster:
 
 | Variable | Default | Use |
 |----------|---------|-----|
-| `SPARK_MASTER` | `local[*]` | set to `k8s://https://<api-server>:6443` for the cluster |
 | `DATA_DIR` | `<repo>/data` | point at `s3a://warehouse/data` on the cluster |
 | `ENABLE_ICEBERG` | `0` | `1` adds a local Iceberg catalog (Days 33-34) |
 | `SPARK_EVENTLOG` | `1` | write event logs for the History Server |
-
-**Run against the cluster instead of local data:**
-
-```bash
-export SPARK_MASTER="k8s://$(minikube ip):8443"
-export DATA_DIR=s3a://warehouse/data           # MinIO bucket instead of local disk
-python exercises/performance-tuning/exercise-10-data-skew-handling.py
-```
 
 ---
 
@@ -157,7 +121,7 @@ Scales: `--scale small` (~1M) · `medium` (~10M) · `large` (~50M, cluster recom
 ```bash
 kubectl apply -f environment/k8s/06-kafka.yaml
 kubectl -n spark-jobs port-forward svc/kafka 9092:9092 &
-python environment/produce_stream.py --rate 20 --topic transactions
+kubectl run kafka-producer --image=python:3.9 --restart=Never -- bash -c 'pip install kafka-python && python environment/produce_stream.py --rate 20 --topic transactions'
 ```
 
 Then run the Day 30-31 streaming exercises, which read from `localhost:9092`.

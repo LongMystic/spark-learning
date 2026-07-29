@@ -39,7 +39,7 @@ spec:
           env:
             - name: SPARK_HISTORY_OPTS
               value: >-
-                -Dspark.history.fs.logDirectory=s3a://spark-events/
+                -Dspark.history.fs.logDirectory=s3a://spark-events/logs
                 -Dspark.hadoop.fs.s3a.endpoint=http://minio.default.svc.cluster.local:9000
                 -Dspark.hadoop.fs.s3a.path.style.access=true
                 -Dspark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem

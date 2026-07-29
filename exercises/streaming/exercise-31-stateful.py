@@ -2,7 +2,7 @@
 Exercise 31: Stateful Streaming — event-time windows + watermark (rate source)
 Purpose: Windowed aggregation with a watermark; observe bounded state.
 
-Run:  python exercises/streaming/exercise-31-stateful.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 Uses the built-in 'rate' source (rows with a timestamp), so no Kafka is required.
 The query runs for ~20s then stops.
 """

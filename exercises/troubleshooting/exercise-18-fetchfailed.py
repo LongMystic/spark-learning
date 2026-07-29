@@ -4,7 +4,7 @@ Purpose: Understand partition sizing, the real driver of shuffle instability.
 You usually can't reproduce a true FetchFailed on a laptop, so this exercise
 focuses on the controllable root cause: per-partition shuffle size.
 
-Run:  python exercises/troubleshooting/exercise-18-fetchfailed.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

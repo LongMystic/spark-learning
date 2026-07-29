@@ -3,7 +3,7 @@ Exercise 39: Shared-cluster architecture & multi-tenancy (design exercise)
 Purpose: Reason about queue capacities, isolation, HA, and security. This is a
 paper/design exercise — it prints a worked example and the questions to answer.
 
-Run:  python exercises/production/exercise-39-architecture.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 print("=" * 60)

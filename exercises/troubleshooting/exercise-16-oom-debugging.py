@@ -2,7 +2,7 @@
 Exercise 16: OOM Debugging
 Purpose: See why collect()/toPandas() risk DRIVER OOM, and how to inspect memory.
 
-Run:  python exercises/troubleshooting/exercise-16-oom-debugging.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 On a laptop the small dataset won't actually OOM — the point is to reason about
 WHERE the memory goes and to practice the safe patterns.
 """

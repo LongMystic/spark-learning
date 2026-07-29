@@ -3,7 +3,7 @@ Exercise 28: Cost-Based Optimization
 Purpose: Register tables, ANALYZE for stats, and compare join plans with CBO on/off.
 Requires catalog support; falls back with a note on a bare session.
 
-Run:  python exercises/advanced/exercise-28-cbo.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

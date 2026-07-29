@@ -2,7 +2,7 @@
 Exercise 21: Production Incident Response
 Purpose: Make a write IDEMPOTENT so "re-run the job" is a safe mitigation.
 
-Run:  python exercises/troubleshooting/exercise-21-incident-response.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 Pair with interview-prep/incident-drills.md for the decision-making practice.
 """
 

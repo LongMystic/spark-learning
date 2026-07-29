@@ -18,7 +18,7 @@ from common.spark_session import get_spark, read_table
 
 from pyspark.sql.functions import col, sum as spark_sum, count
 
-# Initialize Spark Session (local[*] by default; set SPARK_MASTER for a cluster)
+# Initialize Spark Session
 spark = get_spark("DAG Analysis Exercise")
 
 # Exercise 1: Simple transformation (should create 1 stage)

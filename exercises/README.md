@@ -1,10 +1,8 @@
 # Hands-On Exercises
 
-Every exercise is **runnable** against the [local environment](../environment/README.md)
-— no production cluster required. They import a shared SparkSession from
-[`common/spark_session.py`](../common/spark_session.py) and read the generated sample
-tables via `read_table(spark, "transactions")`, so the same code also runs on your
-on-prem cluster (just set `SPARK_MASTER` / `DATA_DIR`).
+Every exercise is **runnable** against the [Kubernetes environment](../environment/README.md).
+They import a shared SparkSession from [`common/spark_session.py`](../common/spark_session.py)
+and read the generated sample tables via `read_table(spark, "transactions")`.
 
 ## 📁 Structure
 
@@ -22,16 +20,12 @@ exercises/
 ## 🚀 How to Use
 
 ```bash
-# One-time setup
-pip install -r ../environment/requirements.txt
-python ../environment/generate_data.py --scale small
-
-# Run an exercise (from the repo root so `common` is importable)
-python exercises/fundamentals/exercise-01-dag-analysis.py
+# Run an exercise via the Spark Operator CRD:
+kubectl apply -f environment/k8s/05-example-sparkapplication.yaml
 ```
 
 1. Read the day's lesson first.
-2. Run the exercise and **open the Spark UI** (`http://localhost:4040` while it runs).
+2. Submit the exercise and **open the live driver UI** (via port-forwarding 4040).
 3. Answer the "Analysis Questions" at the bottom of each script.
 4. Compare with `solutions/` only after attempting.
 5. Experiment — change configs, scale the data up, and observe the difference.

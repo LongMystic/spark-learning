@@ -3,7 +3,7 @@ Exercise 22: Watch Catalyst Optimize
 Purpose: See built-in optimizer rules fire (constant folding, predicate pushdown,
 column pruning) before deciding you need a custom rule.
 
-Run:  python exercises/advanced/exercise-22-catalyst-rules.py
+# Run via Kubernetes (update and apply environment/k8s/05-example-sparkapplication.yaml)
 """
 
 import os

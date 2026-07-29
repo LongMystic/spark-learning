@@ -10,7 +10,7 @@ least one; do all three for true mastery.
 | 2 | [Iceberg CDC Pipeline](capstone-2-iceberg-cdc.md) | Phases 4-5 (Iceberg, streaming, ETL) |
 | 3 | [BI Acceleration](capstone-3-bi-acceleration.md) | Phases 2, 4, 5 (marts, joins, Superset/Thrift) |
 
-**Setup**: `python environment/generate_data.py --scale medium` (or `large` on a cluster)
+**Setup**: Run the data generation SparkApplication with `--scale medium` (see environment/README.md)
 gives more realistic behavior than `small`. Capstone 2 needs the Iceberg jar
 (`ENABLE_ICEBERG=1`, see `exercise-33`).
 
