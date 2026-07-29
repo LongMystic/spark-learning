@@ -44,6 +44,7 @@ spec:
                 -Dspark.hadoop.fs.s3a.path.style.access=true
                 -Dspark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
                 -Dspark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
+                -Dspark.hadoop.fs.s3a.metadatastore.impl=org.apache.hadoop.fs.s3a.s3guard.NullMetadataStore
           ports:
             - { containerPort: 18080, name: web }
           volumeMounts:
