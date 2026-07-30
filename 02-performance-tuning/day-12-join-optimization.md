@@ -263,6 +263,69 @@ df1.join(broadcast(df2), condition, "inner")
 # (e.g., window functions, self-joins)
 ```
 
+## 💡 Key Insights for On-Premise
+
+### 1. Broadcast Small Tables
+
+**Identify Candidates:**
+- Dimension tables in star schema
+- Lookup/reference tables
+- Small tables frequently joined
+
+**Implementation:**
+```python
+from pyspark.sql.functions import broadcast
+
+# Common pattern
+fact_df.join(broadcast(dim_df), "dim_id")
+```
+
+### 2. Optimize Join Order
+
+**Enable CBO:**
+```python
+spark.conf.set("spark.sql.cbo.enabled", "true")
+spark.conf.set("spark.sql.cbo.joinReorder.enabled", "true")
+
+# Collect statistics regularly
+spark.sql("ANALYZE TABLE table_name COMPUTE STATISTICS FOR ALL COLUMNS")
+```
+
+**Let Catalyst Optimize:**
+- Usually chooses best order
+- CBO improves with statistics
+- Manual hints only when needed
+
+### 3. Use Bucketing for Frequent Joins
+
+**When to Use:**
+- Tables frequently joined together
+- Join key is stable
+- Can pre-process data
+
+**Implementation:**
+```python
+# Create bucketed tables
+df1.write.bucketBy(100, "join_key").sortBy("join_key").saveAsTable("table1")
+df2.write.bucketBy(100, "join_key").sortBy("join_key").saveAsTable("table2")
+
+# Subsequent joins are faster
+spark.table("table1").join(spark.table("table2"), "join_key")
+```
+
+### 4. Handle Join Skew
+
+**Enable AQE:**
+```python
+spark.conf.set("spark.sql.adaptive.enabled", "true")
+spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+```
+
+**Or Use Salting:**
+- For known skewed keys
+- Manual implementation
+- More control but more complex
+
 ## 🎯 Practical Exercises
 
 ### Exercise 1: Compare Join Strategies
@@ -332,73 +395,20 @@ result.explain()
 # Measure performance difference
 ```
 
-## 💡 Best Practices for On-Premise
+## 📊 Monitoring & Analysis
 
-### 1. Broadcast Small Tables
+### Key Metrics to Monitor
 
-**Identify Candidates:**
-- Dimension tables in star schema
-- Lookup/reference tables
-- Small tables frequently joined
+1. **Broadcast table size**: Track size against `spark.sql.autoBroadcastJoinThreshold`; watch for OOM errors if it grows too large
+2. **Join algorithm selected**: Confirm via `.explain()` whether Spark chose BroadcastHashJoin, SortMergeJoin, or BroadcastNestedLoopJoin
+3. **Shuffle size per join stage**: Larger-than-expected shuffle indicates a missing filter or column pruning before the join
+4. **Task duration skew in join stages**: Uneven task durations point to join key skew
 
-**Implementation:**
-```python
-from pyspark.sql.functions import broadcast
+### Spark UI Analysis
 
-# Common pattern
-fact_df.join(broadcast(dim_df), "dim_id")
-```
-
-**Monitor:**
-- Check broadcast table size
-- Watch for OOM errors
-- Adjust threshold if needed
-
-### 2. Optimize Join Order
-
-**Enable CBO:**
-```python
-spark.conf.set("spark.sql.cbo.enabled", "true")
-spark.conf.set("spark.sql.cbo.joinReorder.enabled", "true")
-
-# Collect statistics regularly
-spark.sql("ANALYZE TABLE table_name COMPUTE STATISTICS FOR ALL COLUMNS")
-```
-
-**Let Catalyst Optimize:**
-- Usually chooses best order
-- CBO improves with statistics
-- Manual hints only when needed
-
-### 3. Use Bucketing for Frequent Joins
-
-**When to Use:**
-- Tables frequently joined together
-- Join key is stable
-- Can pre-process data
-
-**Implementation:**
-```python
-# Create bucketed tables
-df1.write.bucketBy(100, "join_key").sortBy("join_key").saveAsTable("table1")
-df2.write.bucketBy(100, "join_key").sortBy("join_key").saveAsTable("table2")
-
-# Subsequent joins are faster
-spark.table("table1").join(spark.table("table2"), "join_key")
-```
-
-### 4. Handle Join Skew
-
-**Enable AQE:**
-```python
-spark.conf.set("spark.sql.adaptive.enabled", "true")
-spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
-```
-
-**Or Use Salting:**
-- For known skewed keys
-- Manual implementation
-- More control but more complex
+- **SQL tab**: Expand the query's physical plan to see which join strategy was chosen and confirm broadcast/CBO decisions took effect
+- **Stages tab**: Compare shuffle read/write size across join stages to catch unnecessary shuffles or skewed partitions
+- **Executors tab**: Watch for high GC time or memory pressure on executors during broadcast joins — a sign the broadcast table is too large
 
 ## 🚨 Common Issues & Solutions
 

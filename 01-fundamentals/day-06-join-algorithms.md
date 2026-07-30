@@ -399,46 +399,38 @@ df1.filter(df1.status == "active").join(df2, "id")
 # Less data to join
 ```
 
-## 🔍 Deep Dive: Join Plan Analysis
+## 💡 Key Insights for On-Premise
 
-### Understanding Join Plans
+### 1. Broadcast Small Tables
 
-**View Join Plan:**
 ```python
-df1.join(df2, "id").explain(extended=True)
+# Identify small dimension tables
+# Broadcast them explicitly
+from pyspark.sql.functions import broadcast
+
+# Common pattern: Fact table join dimension table
+fact_df.join(broadcast(dim_df), "dim_id")
 ```
 
-**Plan Output Example:**
-```
-== Physical Plan ==
-*(5) SortMergeJoin [id#10], [id#20], Inner
-:- *(2) Sort [id#10 ASC NULLS FIRST], false, 0
-:  +- Exchange hashpartitioning(id#10, 200)
-:     +- *(1) Project [id#10, ...]
-+- *(4) Sort [id#20 ASC NULLS FIRST], false, 0
-   +- Exchange hashpartitioning(id#20, 200)
-      +- *(3) Project [id#20, ...]
+### 2. Use Bucketing for Frequent Joins
+
+```python
+# For tables frequently joined together
+df1.write.bucketBy(100, "join_key").sortBy("join_key").saveAsTable("table1")
+df2.write.bucketBy(100, "join_key").sortBy("join_key").saveAsTable("table2")
+
+# Subsequent joins are faster
+spark.table("table1").join(spark.table("table2"), "join_key")
 ```
 
-**Reading the Plan:**
-- `SortMergeJoin`: Algorithm used
-- `Exchange hashpartitioning`: Shuffle operation
-- `Sort`: Sort operation before merge
-- Numbers in `*(N)`: Code generation enabled
+### 3. Enable Adaptive Query Execution
 
-**Broadcast Join Plan:**
+```python
+# Spark 3.0+ features
+spark.conf.set("spark.sql.adaptive.enabled", "true")
+spark.conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
+spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
 ```
-== Physical Plan ==
-*(2) BroadcastHashJoin [id#10], [id#20], Inner, BuildRight
-:- *(1) Project [id#10, ...]
-+- BroadcastExchange HashedRelationBroadcastMode(List(input[0, int, false]))
-   +- *(1) Project [id#20, ...]
-```
-
-**Key Indicators:**
-- `BroadcastHashJoin`: Broadcast join used
-- `BroadcastExchange`: Table being broadcasted
-- `BuildRight`/`BuildLeft`: Which side is broadcasted
 
 ## 🎯 Practical Exercises
 
@@ -509,20 +501,9 @@ result_optimized = df1.join(df2, "key")
 # Compare performance
 ```
 
-## 💡 Best Practices for On-Premise
+## 📊 Monitoring & Analysis
 
-### 1. Broadcast Small Tables
-
-```python
-# Identify small dimension tables
-# Broadcast them explicitly
-from pyspark.sql.functions import broadcast
-
-# Common pattern: Fact table join dimension table
-fact_df.join(broadcast(dim_df), "dim_id")
-```
-
-### 2. Monitor Join Performance
+### Key Metrics to Monitor
 
 **Key Metrics:**
 - Join algorithm used
@@ -535,25 +516,44 @@ fact_df.join(broadcast(dim_df), "dim_id")
 - Identify optimization opportunities
 - Track improvements
 
-### 3. Use Bucketing for Frequent Joins
+### Spark UI Analysis
 
+**View Join Plan:**
 ```python
-# For tables frequently joined together
-df1.write.bucketBy(100, "join_key").sortBy("join_key").saveAsTable("table1")
-df2.write.bucketBy(100, "join_key").sortBy("join_key").saveAsTable("table2")
-
-# Subsequent joins are faster
-spark.table("table1").join(spark.table("table2"), "join_key")
+df1.join(df2, "id").explain(extended=True)
 ```
 
-### 4. Enable Adaptive Query Execution
-
-```python
-# Spark 3.0+ features
-spark.conf.set("spark.sql.adaptive.enabled", "true")
-spark.conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
-spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+**Plan Output Example:**
 ```
+== Physical Plan ==
+*(5) SortMergeJoin [id#10], [id#20], Inner
+:- *(2) Sort [id#10 ASC NULLS FIRST], false, 0
+:  +- Exchange hashpartitioning(id#10, 200)
+:     +- *(1) Project [id#10, ...]
++- *(4) Sort [id#20 ASC NULLS FIRST], false, 0
+   +- Exchange hashpartitioning(id#20, 200)
+      +- *(3) Project [id#20, ...]
+```
+
+**Reading the Plan:**
+- `SortMergeJoin`: Algorithm used
+- `Exchange hashpartitioning`: Shuffle operation
+- `Sort`: Sort operation before merge
+- Numbers in `*(N)`: Code generation enabled
+
+**Broadcast Join Plan:**
+```
+== Physical Plan ==
+*(2) BroadcastHashJoin [id#10], [id#20], Inner, BuildRight
+:- *(1) Project [id#10, ...]
++- BroadcastExchange HashedRelationBroadcastMode(List(input[0, int, false]))
+   +- *(1) Project [id#20, ...]
+```
+
+**Key Indicators:**
+- `BroadcastHashJoin`: Broadcast join used
+- `BroadcastExchange`: Table being broadcasted
+- `BuildRight`/`BuildLeft`: Which side is broadcasted
 
 ## 🚨 Common Issues & Solutions
 

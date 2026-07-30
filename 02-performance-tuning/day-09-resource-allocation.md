@@ -255,67 +255,7 @@ spark.conf.set("spark.kubernetes.namespace", "production")
 - **limits.cpu / limits.memory**: burst ceiling (≈ queue max-capacity)
 - **pods**: cap on concurrent pods (per-tenant limit)
 
-## 🎯 Practical Exercises
-
-### Exercise 1: Configure Dynamic Allocation
-
-```python
-# 1. Enable dynamic allocation (+ shuffle tracking, required on K8S)
-spark.conf.set("spark.dynamicAllocation.enabled", "true")
-spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
-
-# 2. Set bounds
-spark.conf.set("spark.dynamicAllocation.minExecutors", "5")
-spark.conf.set("spark.dynamicAllocation.maxExecutors", "30")
-spark.conf.set("spark.dynamicAllocation.initialExecutors", "10")
-
-# 3. Run a workload
-df = spark.read.parquet("s3a://warehouse/large_table/")
-result = df.groupBy("key").agg(sum("amount"))
-
-# 4. Monitor:
-#    - Spark UI Executors tab: Watch executor count change
-#    - kubectl -n spark-jobs get pods -w : watch executor pods appear/disappear
-```
-
-### Exercise 2: Compare Static vs Dynamic
-
-```python
-# Configuration 1: Static
-spark.conf.set("spark.dynamicAllocation.enabled", "false")
-spark.conf.set("spark.executor.instances", "20")
-# Run query and measure time
-
-# Configuration 2: Dynamic
-spark.conf.set("spark.dynamicAllocation.enabled", "true")
-spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
-spark.conf.set("spark.dynamicAllocation.minExecutors", "5")
-spark.conf.set("spark.dynamicAllocation.maxExecutors", "30")
-# Run same query and measure time
-
-# Compare:
-# - Execution time
-# - Node/resource utilization
-# - Cost (if applicable)
-```
-
-### Exercise 3: Monitor Resource Allocation
-
-```python
-# 1. Run job with dynamic allocation
-# 2. Watch Kubernetes:
-#    kubectl -n spark-jobs get pods -w      # pods created/deleted
-#    kubectl top pods -n spark-jobs         # live CPU/mem per pod
-#    kubectl describe pod <executor-pod>    # requests/limits, events, scheduling
-# 3. Check Spark UI (port-forward the driver :4040):
-#    - Executor count over time
-#    - Resource usage per executor
-# 4. Analyze:
-#    - When executor pods were added/removed
-#    - Resource utilization patterns
-```
-
-## 💡 Best Practices for On-Premise Kubernetes
+## 💡 Key Insights for On-Premise
 
 ### 1. Node & Namespace Configuration
 
@@ -396,18 +336,80 @@ spec:
     requests.memory: 240Gi
 ```
 
-### 4. Resource Monitoring
+## 🎯 Practical Exercises
 
-**Key Metrics:**
-- Pod scheduling latency / count of `Pending` pods
-- Namespace quota utilization
-- Node allocatable vs used (`kubectl top nodes`)
-- Executor lifecycle (pod add/remove events)
+### Exercise 1: Configure Dynamic Allocation
 
-**Tools:**
-- `kubectl get/describe/top pods`, Kubernetes Dashboard
-- Spark UI Executors tab (port-forward :4040)
-- Cluster monitoring (Prometheus + Grafana; Spark's Prometheus servlet)
+```python
+# 1. Enable dynamic allocation (+ shuffle tracking, required on K8S)
+spark.conf.set("spark.dynamicAllocation.enabled", "true")
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
+
+# 2. Set bounds
+spark.conf.set("spark.dynamicAllocation.minExecutors", "5")
+spark.conf.set("spark.dynamicAllocation.maxExecutors", "30")
+spark.conf.set("spark.dynamicAllocation.initialExecutors", "10")
+
+# 3. Run a workload
+df = spark.read.parquet("s3a://warehouse/large_table/")
+result = df.groupBy("key").agg(sum("amount"))
+
+# 4. Monitor:
+#    - Spark UI Executors tab: Watch executor count change
+#    - kubectl -n spark-jobs get pods -w : watch executor pods appear/disappear
+```
+
+### Exercise 2: Compare Static vs Dynamic
+
+```python
+# Configuration 1: Static
+spark.conf.set("spark.dynamicAllocation.enabled", "false")
+spark.conf.set("spark.executor.instances", "20")
+# Run query and measure time
+
+# Configuration 2: Dynamic
+spark.conf.set("spark.dynamicAllocation.enabled", "true")
+spark.conf.set("spark.dynamicAllocation.shuffleTracking.enabled", "true")
+spark.conf.set("spark.dynamicAllocation.minExecutors", "5")
+spark.conf.set("spark.dynamicAllocation.maxExecutors", "30")
+# Run same query and measure time
+
+# Compare:
+# - Execution time
+# - Node/resource utilization
+# - Cost (if applicable)
+```
+
+### Exercise 3: Monitor Resource Allocation
+
+```python
+# 1. Run job with dynamic allocation
+# 2. Watch Kubernetes:
+#    kubectl -n spark-jobs get pods -w      # pods created/deleted
+#    kubectl top pods -n spark-jobs         # live CPU/mem per pod
+#    kubectl describe pod <executor-pod>    # requests/limits, events, scheduling
+# 3. Check Spark UI (port-forward the driver :4040):
+#    - Executor count over time
+#    - Resource usage per executor
+# 4. Analyze:
+#    - When executor pods were added/removed
+#    - Resource utilization patterns
+```
+
+## 📊 Monitoring & Analysis
+
+### Key Metrics to Monitor
+
+1. **Pod scheduling latency / count of `Pending` pods**: Signals insufficient allocatable capacity or quota exhaustion
+2. **Namespace quota utilization**: `requests`/`limits` consumed vs the namespace `ResourceQuota`
+3. **Node allocatable vs used** (`kubectl top nodes`): Headroom left for new executor pods
+4. **Executor lifecycle**: Pod add/remove events as dynamic allocation scales up and down
+
+### Spark UI Analysis
+
+- **Executors tab** (port-forward the driver `:4040`): Watch executor count rise and fall as dynamic allocation reacts to load, and check per-executor memory/GC
+- **Combine with kubectl**: `kubectl -n spark-jobs get pods -w` (pod lifecycle), `kubectl top pods` (live CPU/mem), `kubectl describe pod <pod>` (scheduling events) alongside the Spark UI for the full picture
+- **Cluster monitoring**: Prometheus + Grafana (via Spark's Prometheus servlet) and the Kubernetes Dashboard for longer-term trends across jobs
 
 ## 🚨 Common Issues & Solutions
 

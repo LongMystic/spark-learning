@@ -295,44 +295,46 @@ spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
 spark.conf.set("spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes", "256MB")
 ```
 
-## 🔍 Deep Dive: Shuffle Performance Analysis
+## 💡 Key Insights for On-Premise
 
-### Metrics to Monitor
+### 1. Configure Shuffle Storage
 
-**Shuffle Write Metrics:**
-- **Shuffle Write Time**: Time to write shuffle files
-- **Shuffle Write Size**: Total data written
-- **Shuffle Write Records**: Number of records written
-- **Shuffle Write Spill**: Data spilled to disk
+```python
+# Use multiple local directories on different disks
+spark.conf.set("spark.local.dir", 
+    "/data1/spark,/data2/spark,/data3/spark")
 
-**Shuffle Read Metrics:**
-- **Shuffle Read Time**: Time to read shuffle files
-- **Shuffle Read Size**: Total data read
-- **Shuffle Read Records**: Number of records read
-- **Remote Bytes Read**: Data read from network
-- **Local Bytes Read**: Data read locally
+# Ensure sufficient disk space
+# Rule: 2-3x your data size for shuffle
+```
 
-**Network Metrics:**
-- **Network I/O**: Bytes transferred
-- **Fetch Wait Time**: Time waiting for data
-- **Remote Blocks Fetched**: Number of remote fetches
+### 2. Tune for Your Cluster
 
-### Analyzing Shuffle in Spark UI
+**Small Cluster (< 10 nodes):**
+```python
+spark.sql.shuffle.partitions = cores * 2
+spark.shuffle.file.buffer = "64k"
+```
 
-**Stages Tab:**
-1. Look for stages with high shuffle read/write
-2. Check shuffle size (should be reasonable)
-3. Compare shuffle time vs compute time
+**Large Cluster (> 50 nodes):**
+```python
+spark.sql.shuffle.partitions = cores * 3
+spark.shuffle.file.buffer = "128k"
+# Consider dedicated shuffle network
+```
 
-**Tasks Tab:**
-1. Check task execution times
-2. Look for straggler tasks (indicates skew)
-3. Check shuffle read/write per task
+### 3. Monitor Shuffle Health
 
-**SQL Tab:**
-1. View query plan
-2. Identify shuffle operations
-3. Check if optimizations applied
+**Weekly Review:**
+- Average shuffle size per job
+- Shuffle time as % of total time
+- Network utilization during shuffle
+- Disk I/O during shuffle
+
+**Alerts:**
+- Shuffle size > 10x input size (investigate)
+- Shuffle time > 50% of total time (optimize)
+- Frequent spills (increase memory)
 
 ## 🎯 Practical Exercises
 
@@ -389,46 +391,44 @@ result = df.groupBy("key").count()
 #    - Compare performance
 ```
 
-## 💡 Best Practices for On-Premise
+## 📊 Monitoring & Analysis
 
-### 1. Configure Shuffle Storage
+### Key Metrics to Monitor
 
-```python
-# Use multiple local directories on different disks
-spark.conf.set("spark.local.dir", 
-    "/data1/spark,/data2/spark,/data3/spark")
+**Shuffle Write Metrics:**
+- **Shuffle Write Time**: Time to write shuffle files
+- **Shuffle Write Size**: Total data written
+- **Shuffle Write Records**: Number of records written
+- **Shuffle Write Spill**: Data spilled to disk
 
-# Ensure sufficient disk space
-# Rule: 2-3x your data size for shuffle
-```
+**Shuffle Read Metrics:**
+- **Shuffle Read Time**: Time to read shuffle files
+- **Shuffle Read Size**: Total data read
+- **Shuffle Read Records**: Number of records read
+- **Remote Bytes Read**: Data read from network
+- **Local Bytes Read**: Data read locally
 
-### 2. Tune for Your Cluster
+**Network Metrics:**
+- **Network I/O**: Bytes transferred
+- **Fetch Wait Time**: Time waiting for data
+- **Remote Blocks Fetched**: Number of remote fetches
 
-**Small Cluster (< 10 nodes):**
-```python
-spark.sql.shuffle.partitions = cores * 2
-spark.shuffle.file.buffer = "64k"
-```
+### Spark UI Analysis
 
-**Large Cluster (> 50 nodes):**
-```python
-spark.sql.shuffle.partitions = cores * 3
-spark.shuffle.file.buffer = "128k"
-# Consider dedicated shuffle network
-```
+**Stages Tab:**
+1. Look for stages with high shuffle read/write
+2. Check shuffle size (should be reasonable)
+3. Compare shuffle time vs compute time
 
-### 3. Monitor Shuffle Health
+**Tasks Tab:**
+1. Check task execution times
+2. Look for straggler tasks (indicates skew)
+3. Check shuffle read/write per task
 
-**Weekly Review:**
-- Average shuffle size per job
-- Shuffle time as % of total time
-- Network utilization during shuffle
-- Disk I/O during shuffle
-
-**Alerts:**
-- Shuffle size > 10x input size (investigate)
-- Shuffle time > 50% of total time (optimize)
-- Frequent spills (increase memory)
+**SQL Tab:**
+1. View query plan
+2. Identify shuffle operations
+3. Check if optimizations applied
 
 ## 🚨 Common Issues & Solutions
 

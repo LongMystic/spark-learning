@@ -274,6 +274,56 @@ spark.conf.set("spark.executor.extraJavaOptions",
     "-XX:+PrintGCTimeStamps")
 ```
 
+## 💡 Key Insights for On-Premise
+
+### 1. Configuration Management
+
+**Use Configuration Files:**
+```bash
+# spark-defaults.conf
+spark.executor.memory 14g
+spark.executor.cores 5
+spark.executor.instances 30
+spark.sql.shuffle.partitions 300
+```
+
+**Override in Code:**
+```python
+# Only override what's needed
+spark.conf.set("spark.sql.shuffle.partitions", "400")  # For this job
+```
+
+### 2. Right-Sizing Strategy
+
+**Step 1: Understand Your Cluster**
+- Total nodes, RAM, cores
+- Network bandwidth
+- Disk I/O capacity
+
+**Step 2: Calculate Base Configuration**
+- Executors per node
+- Memory per executor
+- Cores per executor
+
+**Step 3: Tune for Workload**
+- Adjust memory fractions
+- Set parallelism
+- Configure shuffle
+
+**Step 4: Test and Iterate**
+- Run representative workloads
+- Measure performance
+- Adjust based on metrics
+
+### 3. Configuration Templates
+
+**Create Templates for:**
+- Small batch jobs
+- Large analytical queries
+- ETL pipelines
+- Streaming applications
+- Interactive queries
+
 ## 🎯 Practical Exercises
 
 ### Exercise 1: Calculate Optimal Configuration
@@ -341,69 +391,26 @@ def get_spark_config(cluster_specs):
 #    - Memory usage
 ```
 
-## 💡 Best Practices for On-Premise
+## 📊 Monitoring & Analysis
 
-### 1. Configuration Management
+### Key Metrics to Monitor
 
-**Use Configuration Files:**
-```bash
-# spark-defaults.conf
-spark.executor.memory 14g
-spark.executor.cores 5
-spark.executor.instances 30
-spark.sql.shuffle.partitions 300
-```
-
-**Override in Code:**
-```python
-# Only override what's needed
-spark.conf.set("spark.sql.shuffle.partitions", "400")  # For this job
-```
-
-### 2. Right-Sizing Strategy
-
-**Step 1: Understand Your Cluster**
-- Total nodes, RAM, cores
-- Network bandwidth
-- Disk I/O capacity
-
-**Step 2: Calculate Base Configuration**
-- Executors per node
-- Memory per executor
-- Cores per executor
-
-**Step 3: Tune for Workload**
-- Adjust memory fractions
-- Set parallelism
-- Configure shuffle
-
-**Step 4: Test and Iterate**
-- Run representative workloads
-- Measure performance
-- Adjust based on metrics
-
-### 3. Monitoring Configuration Impact
-
-**Key Metrics:**
-- Job execution time
-- Resource utilization
-- Shuffle size and time
-- Memory usage and GC time
-- Task execution times
+1. **Job execution time**: Track end-to-end runtime across configuration changes
+2. **Resource utilization**: CPU and memory usage per executor relative to allocated capacity
+3. **Shuffle size and time**: Volume of shuffled data and time spent in shuffle stages
+4. **Memory usage and GC time**: Executor memory pressure and garbage collection pauses
+5. **Task execution times**: Distribution of task durations to spot skew or misconfiguration
 
 **Regular Review:**
 - Weekly configuration review
 - Compare before/after changes
 - Document what works
 
-### 4. Configuration Templates
+### Spark UI Analysis
 
-**Create Templates for:**
-- Small batch jobs
-- Large analytical queries
-- ETL pipelines
-- Streaming applications
-- Interactive queries
+- **Executors tab**: Confirm executor count, memory, and cores match your configured values; watch storage memory and GC time per executor
+- **Stages tab**: Check task duration distribution and shuffle read/write sizes to validate parallelism and shuffle partition settings
+- **Environment tab**: Verify that `spark.conf.set()` calls and `spark-defaults.conf` values were actually applied to the running application
 
 ## 🚨 Common Issues & Solutions
 

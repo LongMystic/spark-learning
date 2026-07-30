@@ -267,6 +267,40 @@ spark.conf.set("spark.reducer.maxSizeInFlight", "96m")
 spark.conf.set("spark.reducer.maxReqsInFlight", "1")
 ```
 
+## 💡 Key Insights for On-Premise
+
+### 1. Shuffle Configuration Template
+
+```python
+# Optimal shuffle configuration
+spark.conf.set("spark.sql.shuffle.partitions", "400")  # 2-3x cores
+spark.conf.set("spark.shuffle.compress", "true")
+spark.conf.set("spark.shuffle.spill.compress", "true")
+spark.conf.set("spark.io.compression.codec", "lz4")
+spark.conf.set("spark.shuffle.file.buffer", "64k")
+spark.conf.set("spark.reducer.maxSizeInFlight", "96m")
+spark.conf.set("spark.local.dir", "/data1/spark,/data2/spark,/data3/spark")
+```
+
+### 2. Reduce Shuffle in Queries
+
+**Checklist:**
+- [ ] Only select needed columns
+- [ ] Filter before joins/groupBy
+- [ ] Use broadcast joins for small tables
+- [ ] Combine multiple aggregations
+- [ ] Optimize join order
+
+### 3. Adaptive Shuffle Settings
+
+**For Spark 3.0+:**
+```python
+# Enable adaptive shuffle
+spark.conf.set("spark.sql.adaptive.enabled", "true")
+spark.conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
+spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+```
+
 ## 🎯 Practical Exercises
 
 ### Exercise 1: Measure Shuffle Size
@@ -322,53 +356,25 @@ df.groupBy("key").count().collect()
 #    - CPU usage
 ```
 
-## 💡 Best Practices for On-Premise
+## 📊 Monitoring & Analysis
 
-### 1. Shuffle Configuration Template
+### Key Metrics to Monitor
 
-```python
-# Optimal shuffle configuration
-spark.conf.set("spark.sql.shuffle.partitions", "400")  # 2-3x cores
-spark.conf.set("spark.shuffle.compress", "true")
-spark.conf.set("spark.shuffle.spill.compress", "true")
-spark.conf.set("spark.io.compression.codec", "lz4")
-spark.conf.set("spark.shuffle.file.buffer", "64k")
-spark.conf.set("spark.reducer.maxSizeInFlight", "96m")
-spark.conf.set("spark.local.dir", "/data1/spark,/data2/spark,/data3/spark")
-```
-
-### 2. Monitor Shuffle Health
-
-**Key Metrics:**
-- Shuffle write/read size
-- Shuffle time as % of total time
-- Number of shuffle files
-- Network I/O during shuffle
-- Disk I/O during shuffle
+1. **Shuffle write/read size**: Compare against input data size to spot excessive shuffling
+2. **Shuffle time as % of total time**: High share indicates shuffle is the bottleneck
+3. **Number of shuffle files**: Very high counts point to too many partitions
+4. **Network and disk I/O during shuffle**: Watch for saturation on either resource
 
 **Regular Review:**
 - Weekly shuffle metrics analysis
 - Identify jobs with excessive shuffle
 - Track improvements after optimization
 
-### 3. Reduce Shuffle in Queries
+### Spark UI Analysis
 
-**Checklist:**
-- [ ] Only select needed columns
-- [ ] Filter before joins/groupBy
-- [ ] Use broadcast joins for small tables
-- [ ] Combine multiple aggregations
-- [ ] Optimize join order
-
-### 4. Adaptive Shuffle Settings
-
-**For Spark 3.0+:**
-```python
-# Enable adaptive shuffle
-spark.conf.set("spark.sql.adaptive.enabled", "true")
-spark.conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
-spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
-```
+- **Stages tab**: Note shuffle write size vs shuffle read size per stage, and compare against input data size to calculate shuffle overhead
+- **Executors tab**: Check disk I/O and shuffle spill metrics per executor to spot memory pressure
+- **SQL tab**: Inspect the query plan for `Exchange` nodes — each one is a shuffle boundary; verify predicate pushdown and column pruning happened before it
 
 ## 🚨 Common Issues & Solutions
 

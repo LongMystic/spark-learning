@@ -230,18 +230,52 @@ spark.conf.set("spark.shuffle.io.connectionTimeout", "60s")
 - More connections = more overhead
 - Adjust based on network capacity
 
-### 4. Network Monitoring
+## 💡 Key Insights for On-Premise
 
-**Key Metrics:**
-- Network I/O during shuffle
-- Bytes sent/received
-- Network utilization
-- Fetch wait time
+### 1. Network Infrastructure
 
-**Tools:**
-- Spark UI (Stages, Tasks tabs)
-- Network monitoring tools
-- Cluster monitoring (Prometheus + Grafana; Spark's Prometheus servlet)
+**Requirements:**
+- **Bandwidth**: 10Gbps+ recommended
+- **Low Latency**: < 1ms within datacenter
+- **Reliability**: Redundant network paths
+- **Monitoring**: Network utilization tracking
+
+**Optimization:**
+- Use dedicated network for shuffle if possible
+- Ensure sufficient bandwidth
+- Monitor network utilization
+- Optimize network topology
+
+### 2. Shuffle Network Configuration
+
+**Optimal Settings:**
+```python
+# Shuffle compression
+spark.conf.set("spark.shuffle.compress", "true")
+spark.conf.set("spark.io.compression.codec", "lz4")
+
+# Shuffle fetch
+spark.conf.set("spark.reducer.maxSizeInFlight", "96m")
+spark.conf.set("spark.reducer.maxReqsInFlight", "1")
+
+# Network timeout
+spark.conf.set("spark.network.timeout", "300s")
+```
+
+### 3. Reduce Network Usage
+
+**Strategies:**
+- Minimize shuffle data size
+- Use broadcast joins for small tables
+- Optimize data locality
+- Compress shuffle data
+
+**Checklist:**
+- [ ] Column pruning before shuffle
+- [ ] Filter before joins/groupBy
+- [ ] Use broadcast for small tables
+- [ ] Enable compression
+- [ ] Optimize partition count
 
 ## 🎯 Practical Exercises
 
@@ -299,66 +333,20 @@ df.groupBy("key").count().collect()
 # 3. Compare performance
 ```
 
-## 💡 Best Practices for On-Premise
+## 📊 Monitoring & Analysis
 
-### 1. Network Infrastructure
+### Key Metrics to Monitor
 
-**Requirements:**
-- **Bandwidth**: 10Gbps+ recommended
-- **Low Latency**: < 1ms within datacenter
-- **Reliability**: Redundant network paths
-- **Monitoring**: Network utilization tracking
+1. **Network I/O during shuffle**: Bytes sent/received per stage, and overall network utilization (alert above ~80%)
+2. **Fetch wait time**: Time tasks spend blocked waiting on remote shuffle blocks
+3. **Network-related errors**: Frequency of `TimeoutException` and other connection errors during shuffle
+4. **Shuffle network I/O trend**: Track during peak hours to catch contention between concurrent jobs
 
-**Optimization:**
-- Use dedicated network for shuffle if possible
-- Ensure sufficient bandwidth
-- Monitor network utilization
-- Optimize network topology
+### Spark UI Analysis
 
-### 2. Shuffle Network Configuration
-
-**Optimal Settings:**
-```python
-# Shuffle compression
-spark.conf.set("spark.shuffle.compress", "true")
-spark.conf.set("spark.io.compression.codec", "lz4")
-
-# Shuffle fetch
-spark.conf.set("spark.reducer.maxSizeInFlight", "96m")
-spark.conf.set("spark.reducer.maxReqsInFlight", "1")
-
-# Network timeout
-spark.conf.set("spark.network.timeout", "300s")
-```
-
-### 3. Reduce Network Usage
-
-**Strategies:**
-- Minimize shuffle data size
-- Use broadcast joins for small tables
-- Optimize data locality
-- Compress shuffle data
-
-**Checklist:**
-- [ ] Column pruning before shuffle
-- [ ] Filter before joins/groupBy
-- [ ] Use broadcast for small tables
-- [ ] Enable compression
-- [ ] Optimize partition count
-
-### 4. Monitor Network Health
-
-**Regular Review:**
-- Network utilization during peak hours
-- Shuffle network I/O
-- Network-related errors
-- Fetch wait times
-
-**Alerts:**
-- High network utilization (> 80%)
-- Frequent network timeouts
-- Slow shuffle operations
-- Network errors
+- **Stages tab**: Check shuffle read size, remote bytes read, and fetch wait time per stage
+- **Tasks tab**: Look for tasks with unusually high fetch wait time relative to their compute time — a sign of network contention
+- **Cluster monitoring**: Cross-reference with Prometheus + Grafana (Spark's Prometheus servlet) or other network monitoring tools for link-level utilization
 
 ## 🚨 Common Issues & Solutions
 

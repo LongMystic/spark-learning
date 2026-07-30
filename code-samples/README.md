@@ -4,7 +4,11 @@
 
 Production-ready code patterns and best practices for common Spark tasks.
 
-## 📁 Structure
+## 📁 Structure (planned — not yet populated)
+
+This directory is currently empty aside from this README. The reference implementations below
+are planned but not yet added; for working code today, see the `exercises/` directory instead
+(every day's lesson has a matching runnable `exercises/**/exercise-NN-*.py`).
 
 ```
 code-samples/
@@ -18,7 +22,7 @@ code-samples/
 
 ## 🚀 Usage
 
-These are reference implementations you can adapt for your use cases.
+Once populated, these will be reference implementations you can adapt for your use cases.
 
 ## ⚠️ Note
 

@@ -26,9 +26,10 @@ By the end of this journey, you will be able to:
 ```bash
 # 1. Install
 pip install -r environment/requirements.txt
-# 2. Generate laptop-friendly sample data (~1M rows)
-See environment/README.md for data generation
-# 3. Run Day 1's exercise and open http://localhost:4040
+# 2. Stand up the local minikube cluster (Spark Operator + MinIO + History Server)
+bash environment/setup.sh
+# 3. Generate laptop-friendly sample data (~1M rows) -- see environment/README.md
+# 4. Run Day 1's exercise and open http://localhost:4040
 kubectl apply -f environment/k8s/05-example-sparkapplication.yaml
 ```
 
@@ -41,13 +42,14 @@ Prefer a real cluster feel? Use the [minikube Kubernetes cluster](environment/RE
 
 | Phase | Days | Focus | Directory | Status |
 |-------|------|-------|-----------|--------|
-| **1. Deep Fundamentals** | 1–7 | Execution model, Catalyst, memory, shuffle, partitioning, joins, caching | [`01-fundamentals/`](01-fundamentals/) | ✅ Complete |
-| **2. Performance Tuning** | 8–14 | Config, resources, skew, shuffle/join/memory/network tuning | [`02-performance-tuning/`](02-performance-tuning/) | ✅ Complete |
-| **3. Troubleshooting Mastery** | 15–21 | Errors, OOM, task/shuffle failures, serialization, incident response | [`03-troubleshooting/`](03-troubleshooting/) | 🚧 In progress |
-| **4. Advanced Topics** | 22–28 | Catalyst rules, advanced SQL, UDF/AQE, broadcast, bucketing, DPP, CBO | [`04-advanced-topics/`](04-advanced-topics/) | 🚧 In progress |
-| **5. Production & Ecosystem** | 29–40 | Thrift, Streaming, PySpark/Zeppelin, Iceberg, Airflow, DBT, Superset, patterns | [`05-`…`10-`](10-production-patterns/) | 🚧 In progress |
+| **1. Deep Fundamentals** | 1–7 | Execution model, Catalyst, memory, shuffle, partitioning, joins, caching | [`01-fundamentals/`](01-fundamentals/) | ✅ Lessons authored |
+| **2. Performance Tuning** | 8–14 | Config, resources, skew, shuffle/join/memory/network tuning | [`02-performance-tuning/`](02-performance-tuning/) | ✅ Lessons authored |
+| **3. Troubleshooting Mastery** | 15–21 | Errors, OOM, task/shuffle failures, serialization, incident response | [`03-troubleshooting/`](03-troubleshooting/) | ✅ Lessons authored |
+| **4. Advanced Topics** | 22–28 | Catalyst rules, advanced SQL, UDF/AQE, broadcast, bucketing, DPP, CBO | [`04-advanced-topics/`](04-advanced-topics/) | ✅ Lessons authored |
+| **5. Production & Ecosystem** | 29–40 | Thrift, Streaming, PySpark/Zeppelin, Iceberg, Airflow, DBT, Superset, patterns | [`05-`…`10-`](10-production-patterns/) | ✅ Lessons authored |
 
-Detailed day-by-day breakdown and status: **[PROGRESS.md](PROGRESS.md)**.
+All 40 lessons and their matching exercises are written — "status" above tracks lesson content, not
+*your* personal study progress. Track that day-by-day in **[PROGRESS.md](PROGRESS.md)**.
 
 ## 📁 Repository Structure
 
@@ -55,8 +57,8 @@ Detailed day-by-day breakdown and status: **[PROGRESS.md](PROGRESS.md)**.
 spark-learning/
 ├── environment/              # 🧪 Local Spark cluster + sample-data generator (start here)
 ├── common/                   # Shared SparkSession factory used by every exercise
-├── 01-fundamentals/          # Phase 1 — Days 1-7      ✅
-├── 02-performance-tuning/    # Phase 2 — Days 8-14     ✅
+├── 01-fundamentals/          # Phase 1 — Days 1-7
+├── 02-performance-tuning/    # Phase 2 — Days 8-14
 ├── 03-troubleshooting/       # Phase 3 — Days 15-21
 ├── 04-advanced-topics/       # Phase 4 — Days 22-28
 ├── 05-real-world-scenarios/  # Phase 5 — ETL/CDC (Day 38)

@@ -170,7 +170,7 @@ result = (df
 # 3. Data locality (NODE_LOCAL, RACK_LOCAL, ANY)
 ```
 
-## 📊 Spark UI Deep Dive
+## 📊 Monitoring & Analysis
 
 ### Key Metrics to Monitor
 

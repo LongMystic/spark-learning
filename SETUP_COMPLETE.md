@@ -21,19 +21,20 @@ Every lesson has a runnable exercise, and you can run all of it on your laptop.
 ### Lesson content
 - ✅ **Phase 1 — Days 1-7** (`01-fundamentals/`): lessons + exercises
 - ✅ **Phase 2 — Days 8-14** (`02-performance-tuning/`): lessons + exercises
-- 🚧 **Phases 3-5 — Days 15-40** (`03-` … `10-`): being authored; see PROGRESS.md
+- ✅ **Phases 3-5 — Days 15-40** (`03-` … `10-`): lessons + exercises; see PROGRESS.md
 
 ### Practice & evaluation
-- ✅ **exercises/** — runnable exercises (`fundamentals/`, `performance-tuning/`, and more as phases land)
-- 🚧 **exercises/solutions/** — worked solutions + expected observations
-- 🚧 **assessments/** — per-phase self-assessments, mastery checklist, capstones
-- 🚧 **interview-prep/** — question banks + incident drills
+- ✅ **exercises/** — runnable exercises for all 40 days (`fundamentals/`, `performance-tuning/`, `troubleshooting/`, `advanced/`, `streaming/`, `production/`)
+- ✅ **exercises/solutions/** — worked solutions + expected observations
+- ✅ **assessments/** — per-phase self-assessments, mastery checklist, capstones
+- ✅ **interview-prep/** — question banks + incident drills
 
 ## 🚀 Start Here
 
 ```bash
 pip install -r environment/requirements.txt
-See environment/README.md for data generation
+bash environment/setup.sh   # stands up minikube + Spark Operator + MinIO
+# then generate sample data -- see environment/README.md
 kubectl apply -f environment/k8s/05-example-sparkapplication.yaml
 ```
 

@@ -29,39 +29,49 @@ See [environment/README.md](environment/README.md) to set up in ~5 minutes.
 ### Phase 2: Performance Tuning (Week 2)
 **Goal**: Optimize Spark jobs for production
 
-- Configuration tuning
-- Resource allocation
-- Data skew handling
-- Shuffle optimization
-- Join optimization
-- Memory optimization
+- **Day 8**: Configuration tuning
+- **Day 9**: Resource allocation
+- **Day 10**: Data skew handling
+- **Day 11**: Shuffle optimization
+- **Day 12**: Join optimization
+- **Day 13**: Memory optimization
+- **Day 14**: Network optimization
 
 ### Phase 3: Troubleshooting (Week 3)
 **Goal**: Debug and fix production issues
 
-- Common error patterns
-- OOM debugging
-- Task failure analysis
-- Performance debugging
-- Production incident response
+- **Day 15**: Common error patterns
+- **Day 16**: OOM debugging
+- **Day 17**: Task failure analysis
+- **Day 18**: Shuffle error resolution (FetchFailed)
+- **Day 19**: Serialization & UDF issues
+- **Day 20**: Performance debugging
+- **Day 21**: Production incident response
 
 ### Phase 4: Advanced Topics (Week 4)
 **Goal**: Master advanced Spark features
 
-- Custom optimizations
-- Advanced SQL patterns
-- UDF/UDAF performance
-- Broadcast strategies
-- Bucketing techniques
+- **Day 22**: Custom optimizations & Catalyst rules
+- **Day 23**: Advanced SQL patterns
+- **Day 24**: UDF/UDAF performance
+- **Day 25**: Broadcast strategies & AQE
+- **Day 26**: Bucketing techniques
+- **Day 27**: Dynamic partition pruning
+- **Day 28**: Cost-based optimization
 
 ### Phase 5: Production Patterns (Week 5+)
 **Goal**: Apply knowledge to your stack
 
-- Spark Thrift Server optimization
-- Structured Streaming patterns
-- Airflow/DBT integration
-- Iceberg optimization
-- Superset query optimization
+- **Day 29**: Spark Thrift Server optimization
+- **Day 30-31**: Structured Streaming patterns (fundamentals, stateful/watermarks)
+- **Day 32**: PySpark best practices & Zeppelin
+- **Day 33-34**: Iceberg fundamentals & maintenance
+- **Day 35**: Airflow orchestration integration
+- **Day 36**: DBT-on-Spark integration
+- **Day 37**: Superset query optimization
+- **Day 38**: Large-scale ETL & CDC patterns
+- **Day 39**: Architecture, multi-tenancy, HA & security
+- **Day 40**: Cost/observability + capstone kickoff
 
 ## 📖 How to Use This Repository
 

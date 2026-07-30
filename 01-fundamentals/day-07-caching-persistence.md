@@ -288,40 +288,66 @@ result = df.groupBy("key").count()
 df.unpersist()
 ```
 
-## 🔍 Deep Dive: Caching Performance
+## 💡 Key Insights for On-Premise
 
-### Monitoring Cache Effectiveness
+### 1. Cache Strategically
 
-**Spark UI - Storage Tab:**
-- **Cached RDDs/DataFrames**: List of cached data
-- **Memory Used**: Memory consumed by cache
-- **Disk Used**: Disk space used (if spilled)
-- **Size**: Total size of cached data
+**Do Cache:**
+- Data used multiple times
+- Expensive computations
+- Small dimension tables
+- Intermediate results in iterative algorithms
 
-**Metrics to Watch:**
-- **Hit Rate**: How often cache is used
-- **Eviction Rate**: How often data is evicted
-- **Memory Usage**: Percentage of storage memory used
+**Don't Cache:**
+- Data used only once
+- Very large data (larger than memory)
+- Simple operations
+- Frequently changing data
 
-### Cache Hit vs Miss
+### 2. Monitor Cache Usage
 
-**Cache Hit:**
-- Data found in cache
-- Fast access
-- No recomputation
-
-**Cache Miss:**
-- Data not in cache (evicted or never cached)
-- Recomputes from source
-- Slower access
+**Regular Checks:**
+- Storage tab in Spark UI
+- Memory usage for cached data
+- Cache hit/miss rates
+- Eviction frequency
 
 **Optimization:**
+- If frequent evictions: Increase storage memory
+- If low usage: Remove unnecessary caches
+- If memory pressure: Use DISK_ONLY or unpersist
+
+### 3. Tune Storage Memory
+
+**For Cache-Heavy Workloads:**
 ```python
-# Check if cache is effective
-# In Spark UI, look for:
-# - High memory usage for cached data
-# - Low eviction rate
-# - Fast subsequent actions
+# Increase storage memory fraction
+spark.conf.set("spark.memory.fraction", "0.8")
+spark.conf.set("spark.memory.storageFraction", "0.6")
+```
+
+**For Compute-Heavy Workloads:**
+```python
+# Decrease storage memory
+spark.conf.set("spark.memory.fraction", "0.6")
+spark.conf.set("spark.memory.storageFraction", "0.3")
+```
+
+### 4. Clean Up Caches
+
+**Best Practice:**
+```python
+# Unpersist when done
+df.cache()
+# ... use cached data ...
+df.unpersist()
+
+# Or use context manager pattern
+try:
+    df.cache()
+    # ... use cached data ...
+finally:
+    df.unpersist()
 ```
 
 ## 🎯 Practical Exercises
@@ -401,66 +427,34 @@ df.groupBy("key").count()
 #    - Cached stages should be faster
 ```
 
-## 💡 Best Practices for On-Premise
+## 📊 Monitoring & Analysis
 
-### 1. Cache Strategically
+### Key Metrics to Monitor
 
-**Do Cache:**
-- Data used multiple times
-- Expensive computations
-- Small dimension tables
-- Intermediate results in iterative algorithms
+**Metrics to Watch:**
+- **Hit Rate**: How often cache is used
+- **Eviction Rate**: How often data is evicted
+- **Memory Usage**: Percentage of storage memory used
 
-**Don't Cache:**
-- Data used only once
-- Very large data (larger than memory)
-- Simple operations
-- Frequently changing data
+**Cache Hit vs Miss:**
+- **Cache Hit**: Data found in cache - fast access, no recomputation
+- **Cache Miss**: Data not in cache (evicted or never cached) - recomputes from source, slower access
 
-### 2. Monitor Cache Usage
+### Spark UI Analysis
 
-**Regular Checks:**
-- Storage tab in Spark UI
-- Memory usage for cached data
-- Cache hit/miss rates
-- Eviction frequency
+**Storage Tab:**
+- **Cached RDDs/DataFrames**: List of cached data
+- **Memory Used**: Memory consumed by cache
+- **Disk Used**: Disk space used (if spilled)
+- **Size**: Total size of cached data
 
-**Optimization:**
-- If frequent evictions: Increase storage memory
-- If low usage: Remove unnecessary caches
-- If memory pressure: Use DISK_ONLY or unpersist
-
-### 3. Tune Storage Memory
-
-**For Cache-Heavy Workloads:**
+**Optimization Checklist:**
 ```python
-# Increase storage memory fraction
-spark.conf.set("spark.memory.fraction", "0.8")
-spark.conf.set("spark.memory.storageFraction", "0.6")
-```
-
-**For Compute-Heavy Workloads:**
-```python
-# Decrease storage memory
-spark.conf.set("spark.memory.fraction", "0.6")
-spark.conf.set("spark.memory.storageFraction", "0.3")
-```
-
-### 4. Clean Up Caches
-
-**Best Practice:**
-```python
-# Unpersist when done
-df.cache()
-# ... use cached data ...
-df.unpersist()
-
-# Or use context manager pattern
-try:
-    df.cache()
-    # ... use cached data ...
-finally:
-    df.unpersist()
+# Check if cache is effective
+# In Spark UI, look for:
+# - High memory usage for cached data
+# - Low eviction rate
+# - Fast subsequent actions
 ```
 
 ## 🚨 Common Issues & Solutions

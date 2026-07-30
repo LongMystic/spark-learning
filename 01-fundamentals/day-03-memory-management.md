@@ -343,7 +343,7 @@ result = df.groupBy("category").agg(sum("amount"))
 # - Total GC time
 ```
 
-## 📊 Monitoring Memory in Spark UI
+## 📊 Monitoring & Analysis
 
 ### Key Metrics to Watch
 
@@ -383,7 +383,7 @@ result = df.groupBy("category").agg(sum("amount"))
 - OOM errors
 - Task failures
 
-## 💡 Best Practices for On-Premise
+## 💡 Key Insights for On-Premise
 
 ### 1. Right-Size for Your Cluster
 

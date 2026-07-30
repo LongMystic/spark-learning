@@ -3,7 +3,7 @@ Exercise 10: Data Skew Handling
 Purpose: Learn to detect and handle data skew
 
 Instructions:
-1. Create and detect skewed data
+1. Detect skew on the real transactions_skewed table
 2. Apply skew mitigation techniques
 3. Compare performance with/without skew handling
 """
@@ -13,56 +13,43 @@ import sys
 import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from common.spark_session import get_spark, read_table  # noqa: F401
+from common.spark_session import get_spark, read_table  # noqa: F401,E402
 
-from pyspark.sql.functions import col, sum as spark_sum, count, when, concat, lit, rand, split, explode, array
+from pyspark.sql.functions import col, sum as spark_sum, count, concat, lit, rand, split, explode, array  # noqa: E402
 
 spark = get_spark("Data Skew Handling Exercise")
 
-# Exercise 1: Create Skewed Data
+# Exercise 1: Detect Skew
 print("=" * 50)
-print("Exercise 1: Create and Detect Skew")
+print("Exercise 1: Detect Skew on transactions_skewed")
 print("=" * 50)
 
-# Create data with intentional skew
-df = spark.range(0, 1000000).withColumn(
-    "key",
-    when(col("id") < 100000, lit("skewed"))
-    .otherwise(concat(lit("normal_"), (col("id") % 100).cast("string")))
-).withColumn("amount", (col("id") % 1000) + 1)
+txns = read_table(spark, "transactions_skewed")
+customers = read_table(spark, "customers")
 
-print("Created DataFrame with skewed key distribution")
-print("  - 10% of data has key='skewed'")
-print("  - 90% of data has key='normal_X'")
+print("Loaded 'transactions_skewed' -> ~80% of rows land on 5 'hot' customer_ids")
+print("(see environment/generate_data.py: build_transactions_skewed)")
 
-# Detect skew by checking partition sizes
-def detect_skew(df, threshold=3.0):
-    """Detect if DataFrame has skewed partitions"""
-    partition_sizes = df.rdd.mapPartitions(
-        lambda it: [sum(1 for _ in it)]
-    ).collect()
-    
-    if not partition_sizes:
+
+def detect_skew(df, key_col, threshold=3.0):
+    """Detect skew by comparing per-key row counts."""
+    counts = [r["cnt"] for r in df.groupBy(key_col).agg(count("*").alias("cnt")).collect()]
+    if not counts:
         return False, 0, 0, 0
-    
-    min_size = min(partition_sizes)
-    max_size = max(partition_sizes)
-    avg_size = sum(partition_sizes) / len(partition_sizes)
-    ratio = max_size / min_size if min_size > 0 else float('inf')
-    
-    is_skewed = ratio > threshold
-    return is_skewed, ratio, min_size, max_size
+    min_c, max_c = min(counts), max(counts)
+    ratio = max_c / min_c if min_c > 0 else float("inf")
+    return ratio > threshold, ratio, min_c, max_c
 
-is_skewed, ratio, min_size, max_size = detect_skew(df)
-print(f"\nSkew Detection Results:")
+
+is_skewed, ratio, min_c, max_c = detect_skew(txns, "customer_id")
+print("\nSkew Detection Results (by customer_id):")
 print(f"  Is Skewed: {is_skewed}")
 print(f"  Skew Ratio: {ratio:.2f}")
-print(f"  Min Partition Size: {min_size}")
-print(f"  Max Partition Size: {max_size}")
+print(f"  Min Key Count: {min_c}")
+print(f"  Max Key Count: {max_c}")
 
-# Check key distribution
-print("\nKey Distribution (Top 10):")
-key_counts = df.groupBy("key").agg(count("*").alias("count")).orderBy(col("count").desc())
+print("\nTop 10 customer_ids by row count:")
+key_counts = txns.groupBy("customer_id").agg(count("*").alias("cnt")).orderBy(col("cnt").desc())
 key_counts.show(10)
 
 # Exercise 2: Observe Skew Impact
@@ -70,20 +57,19 @@ print("\n" + "=" * 50)
 print("Exercise 2: Observe Skew Impact")
 print("=" * 50)
 
-print("Running groupBy on skewed data...")
-print("  Check Spark UI for uneven task execution times")
+print("Running groupBy on the skewed table -- check Spark UI for uneven task times")
 
 start = time.time()
-result1 = df.groupBy("key").agg(spark_sum("amount").alias("total"))
-# result1.count()  # Uncomment to execute
+result1 = txns.groupBy("customer_id").agg(spark_sum("amount").alias("total"))
+result1.count()
 time_skewed = time.time() - start
 
 print(f"  Execution time: {time_skewed:.2f}s")
 print("""
-Expected observations:
-- Some tasks take much longer than others
-- Uneven task execution times in Spark UI
-- Straggler tasks
+Expected observations in the Spark UI (Stages tab):
+- A handful of tasks (the hot customer_ids) take much longer than the rest
+- Uneven Shuffle Read Size across tasks in the same stage
+- Straggler tasks that hold up the whole stage
 """)
 
 # Exercise 3: Adaptive Query Execution (Spark 3.0+)
@@ -101,26 +87,17 @@ print("AQE Skew Handling Enabled:")
 print(f"  AQE Enabled: {spark.conf.get('spark.sql.adaptive.enabled')}")
 print(f"  Skew Join Enabled: {spark.conf.get('spark.sql.adaptive.skewJoin.enabled')}")
 
-# Create join scenario
-df1 = df
-df2 = spark.range(0, 100000).withColumn(
-    "key",
-    when(col("id") < 10000, lit("skewed"))
-    .otherwise(concat(lit("normal_"), (col("id") % 100).cast("string")))
-).withColumn("value", col("id") * 2)
-
-print("\nRunning join with AQE skew handling...")
+print("\nRunning join(transactions_skewed, customers) with AQE skew handling...")
 start = time.time()
-result2 = df1.join(df2, "key")
-# result2.count()  # Uncomment to execute
+result2 = txns.join(customers, "customer_id")
+result2.count()
 time_aqe = time.time() - start
 
 print(f"  Execution time: {time_aqe:.2f}s")
 print("""
-Check Spark UI:
-- Look for skew join indicators
-- Check if partitions were split
-- Compare task execution times
+Check Spark UI (SQL tab):
+- Look for "coalesced"/skew markers on the shuffle exchange node
+- Compare partition counts before/after AQE splits the hot customer_id partitions
 """)
 
 # Exercise 4: Salting Technique
@@ -130,33 +107,25 @@ print("=" * 50)
 
 salt_buckets = 10
 
-# Add salt to skewed side
-print("Adding salt to DataFrame...")
-df1_salted = df1.withColumn(
+print("Adding salt to the skewed side (transactions_skewed)...")
+txns_salted = txns.alias("t").withColumn(
     "salted_key",
-    concat(col("key"), lit("_"), (rand() * salt_buckets).cast("int"))
+    concat(col("customer_id").cast("string"), lit("_"), (rand() * salt_buckets).cast("int"))
 )
 
-# Replicate and salt the other side
-print("Replicating and salting other side...")
+print("Replicating and salting the other side (customers)...")
 salt_array = array([lit(f"_{i}") for i in range(salt_buckets)])
-df2_salted = df2.withColumn("salt", explode(salt_array)) \
-    .withColumn("salted_key", concat(col("key"), col("salt")))
+customers_salted = customers.alias("c").withColumn("salt", explode(salt_array)) \
+    .withColumn("salted_key", concat(col("customer_id").cast("string"), col("salt")))
 
 print(f"  Salt buckets: {salt_buckets}")
-print("  This distributes skewed keys across multiple partitions")
+print("  This distributes each hot customer_id across multiple partitions")
 
-# Join on salted key
 print("\nRunning join with salted keys...")
 start = time.time()
-result3 = df1_salted.join(df2_salted, "salted_key")
-
-# Remove salt and aggregate
-result3_final = result3.withColumn("key", split(col("salted_key"), "_")[0]) \
-    .drop("salted_key", "salt") \
-    .groupBy("key").agg(spark_sum("amount").alias("total"), spark_sum("value").alias("total_value"))
-
-# result3_final.count()  # Uncomment to execute
+result3 = txns_salted.join(customers_salted, "salted_key").select("t.customer_id", "t.amount")
+result3_final = result3.groupBy("customer_id").agg(spark_sum("amount").alias("total"))
+result3_final.count()
 time_salted = time.time() - start
 
 print(f"  Execution time: {time_salted:.2f}s")
@@ -168,23 +137,24 @@ print("=" * 50)
 
 # Phase 1: Partial aggregation with salt
 print("Phase 1: Partial aggregation with salt...")
-df_salted = df.withColumn(
+txns_salted2 = txns.withColumn(
     "salted_key",
-    concat(col("key"), lit("_"), (rand() * 10).cast("int"))
+    concat(col("customer_id").cast("string"), lit("_"), (rand() * 10).cast("int"))
 )
 
-partial = df_salted.groupBy("salted_key").agg(
+partial = txns_salted2.groupBy("salted_key").agg(
     spark_sum("amount").alias("partial_sum"),
     count("*").alias("partial_count")
 )
 
 # Phase 2: Final aggregation
 print("Phase 2: Final aggregation...")
-final = partial.withColumn("key", split(col("salted_key"), "_")[0]) \
-    .groupBy("key").agg(
+final = partial.withColumn("customer_id", split(col("salted_key"), "_")[0].cast("long")) \
+    .groupBy("customer_id").agg(
         spark_sum("partial_sum").alias("total_sum"),
         spark_sum("partial_count").alias("total_count")
     )
+final.count()
 
 print("Two-phase aggregation complete")
 print("  This reduces skew impact in aggregations")
@@ -194,35 +164,39 @@ print("\n" + "=" * 50)
 print("Exercise 6: Split Skewed Keys")
 print("=" * 50)
 
-# Identify skewed keys
-skewed_keys = ["skewed"]  # Known skewed values
+# Identify the hot customer_ids from the skew detection above
+top_customers = [
+    r["customer_id"]
+    for r in key_counts.limit(5).collect()
+]
+print(f"Identified hot customer_ids: {top_customers}")
 
-# Split data
-df_normal = df.filter(~col("key").isin(skewed_keys))
-df_skewed = df.filter(col("key").isin(skewed_keys))
+df_normal = txns.filter(~col("customer_id").isin(top_customers))
+df_hot = txns.filter(col("customer_id").isin(top_customers))
 
-print(f"Split data:")
-print(f"  Normal keys: {df_normal.count()} rows")
-print(f"  Skewed keys: {df_skewed.count()} rows")
+print("Split data:")
+print(f"  Normal customers: {df_normal.count()} rows")
+print(f"  Hot customers: {df_hot.count()} rows")
 
 # Process separately
-result_normal = df_normal.groupBy("key").agg(spark_sum("amount").alias("total"))
+result_normal = df_normal.groupBy("customer_id").agg(spark_sum("amount").alias("total"))
 
-# For skewed keys, use salting
-df_skewed_salted = df_skewed.withColumn(
+# For hot customers, use salting
+df_hot_salted = df_hot.withColumn(
     "salted_key",
-    concat(col("key"), lit("_"), (rand() * 10).cast("int"))
+    concat(col("customer_id").cast("string"), lit("_"), (rand() * 10).cast("int"))
 )
-result_skewed = df_skewed_salted.groupBy("salted_key").agg(spark_sum("amount").alias("total")) \
-    .withColumn("key", split(col("salted_key"), "_")[0]) \
-    .groupBy("key").agg(spark_sum("total").alias("total"))
+result_hot = df_hot_salted.groupBy("salted_key").agg(spark_sum("amount").alias("total")) \
+    .withColumn("customer_id", split(col("salted_key"), "_")[0].cast("long")) \
+    .groupBy("customer_id").agg(spark_sum("total").alias("total"))
 
 # Union results
-result_split = result_normal.union(result_skewed)
+result_split = result_normal.union(result_hot)
+result_split.count()
 
 print("Split processing complete")
-print("  Normal keys processed normally")
-print("  Skewed keys processed with salting")
+print("  Normal customers processed normally")
+print("  Hot customers processed with salting")
 
 print("\n" + "=" * 50)
 print("Analysis Questions:")
@@ -235,4 +209,3 @@ print("5. When should you use two-phase aggregation?")
 print("6. Compare performance: with vs without skew handling")
 
 spark.stop()
-

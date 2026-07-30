@@ -371,6 +371,58 @@ df.write.mode("append").partitionBy("year", "month").parquet("output/")
 # Write in larger batches
 ```
 
+## 💡 Key Insights for On-Premise
+
+### 1. Hive Table Partitioning
+
+**Recommended Structure:**
+```sql
+-- Partition by date components
+PARTITIONED BY (year INT, month INT, day INT)
+
+-- Or single date partition
+PARTITIONED BY (date STRING)  -- Format: '2023-01-15'
+```
+
+**Writing Best Practices:**
+```python
+# Use dynamic partition overwrite
+spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
+
+# Coalesce before writing
+df.coalesce(num_files_per_partition).write \
+    .mode("overwrite").insertInto("hive_table")
+```
+
+### 2. Iceberg Table Partitioning
+
+**Recommended:**
+```python
+# Use transform partitioning
+PARTITIONED BY (
+    years(sale_date),
+    months(sale_date),
+    bucket(16, customer_id)  # For join optimization
+)
+```
+
+**Maintenance:**
+```python
+# Regular compaction
+spark.sql("CALL system.rewrite_data_files('db.table')")
+
+# Expire old snapshots
+spark.sql("CALL system.expire_snapshots('db.table', timestamp '2023-01-01')")
+```
+
+### 3. Partition Column Selection
+
+**Checklist:**
+- [ ] Column used in WHERE clauses frequently
+- [ ] Reasonable cardinality (not too high, not too low)
+- [ ] Balanced data distribution
+- [ ] Not too many partition columns (2-3 max)
+
 ## 🎯 Practical Exercises
 
 ### Exercise 1: Analyze Partition Pruning
@@ -440,59 +492,9 @@ df_coalesced.write.mode("overwrite") \
 spark.read.parquet("coalesced_files/").count()
 ```
 
-## 💡 Best Practices for On-Premise
+## 📊 Monitoring & Analysis
 
-### 1. Hive Table Partitioning
-
-**Recommended Structure:**
-```sql
--- Partition by date components
-PARTITIONED BY (year INT, month INT, day INT)
-
--- Or single date partition
-PARTITIONED BY (date STRING)  -- Format: '2023-01-15'
-```
-
-**Writing Best Practices:**
-```python
-# Use dynamic partition overwrite
-spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
-
-# Coalesce before writing
-df.coalesce(num_files_per_partition).write \
-    .mode("overwrite").insertInto("hive_table")
-```
-
-### 2. Iceberg Table Partitioning
-
-**Recommended:**
-```python
-# Use transform partitioning
-PARTITIONED BY (
-    years(sale_date),
-    months(sale_date),
-    bucket(16, customer_id)  # For join optimization
-)
-```
-
-**Maintenance:**
-```python
-# Regular compaction
-spark.sql("CALL system.rewrite_data_files('db.table')")
-
-# Expire old snapshots
-spark.sql("CALL system.expire_snapshots('db.table', timestamp '2023-01-01')")
-```
-
-### 3. Partition Column Selection
-
-**Checklist:**
-- [ ] Column used in WHERE clauses frequently
-- [ ] Reasonable cardinality (not too high, not too low)
-- [ ] Balanced data distribution
-- [ ] Not too many partition columns (2-3 max)
-
-### 4. Monitoring Partition Health
+### Key Metrics to Monitor
 
 **Metrics to Track:**
 - Number of partitions
@@ -500,6 +502,19 @@ spark.sql("CALL system.expire_snapshots('db.table', timestamp '2023-01-01')")
 - Number of small files (< 10MB)
 - Partition pruning effectiveness
 - Query performance on partitioned tables
+
+### Spark UI Analysis
+
+**SQL Tab / Explain Plan:**
+1. Run `df.explain(extended=True)` and look for `PartitionFilters` in the physical plan - confirms pruning was applied
+2. Only `PushedFilters` with no `PartitionFilters` means the whole table is still being scanned
+
+**Stages Tab:**
+1. Compare "Input Size / Records" across stages before and after adding a partition filter
+2. A correctly pruned query reads far fewer bytes/files than an unpruned equivalent
+
+**Jobs Tab:**
+1. Watch for jobs that spend a long time in file listing - a sign of too many small partitions/files
 
 ## 🚨 Common Issues & Solutions
 

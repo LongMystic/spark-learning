@@ -2,8 +2,8 @@
 
 ## 📊 Overall Progress
 
-- [x] Phase 1: Deep Fundamentals (Days 1-7) — lessons + exercises complete
-- [x] Phase 2: Performance Tuning (Days 8-14) — lessons + exercises complete
+- [ ] Phase 1: Deep Fundamentals (Days 1-7)
+- [ ] Phase 2: Performance Tuning (Days 8-14)
 - [ ] Phase 3: Troubleshooting Mastery (Days 15-21)
 - [ ] Phase 4: Advanced Topics (Days 22-28)
 - [ ] Phase 5: Production & Ecosystem (Days 29-40)
@@ -14,22 +14,22 @@
 ## ✅ Days
 
 ### Phase 1: Deep Fundamentals — `01-fundamentals/`
-- [x] Day 1: Spark Execution Model Deep Dive
-- [x] Day 2: Catalyst Optimizer Internals
-- [x] Day 3: Memory Management and GC
-- [x] Day 4: Shuffle Mechanics
-- [x] Day 5: Partitioning Strategies
-- [x] Day 6: Join Algorithms
-- [x] Day 7: Caching and Persistence
+- [ ] Day 1: Spark Execution Model Deep Dive
+- [ ] Day 2: Catalyst Optimizer Internals
+- [ ] Day 3: Memory Management and GC
+- [ ] Day 4: Shuffle Mechanics
+- [ ] Day 5: Partitioning Strategies
+- [ ] Day 6: Join Algorithms
+- [ ] Day 7: Caching and Persistence
 
 ### Phase 2: Performance Tuning — `02-performance-tuning/`
-- [x] Day 8: Configuration Tuning
-- [x] Day 9: Resource Allocation
-- [x] Day 10: Data Skew Handling
-- [x] Day 11: Shuffle Optimization
-- [x] Day 12: Join Optimization
-- [x] Day 13: Memory Optimization
-- [x] Day 14: Network Optimization
+- [ ] Day 8: Configuration Tuning
+- [ ] Day 9: Resource Allocation
+- [ ] Day 10: Data Skew Handling
+- [ ] Day 11: Shuffle Optimization
+- [ ] Day 12: Join Optimization
+- [ ] Day 13: Memory Optimization
+- [ ] Day 14: Network Optimization
 
 ### Phase 3: Troubleshooting Mastery — `03-troubleshooting/`
 - [ ] Day 15: Common Error Patterns & Reading Logs/Stack Traces
@@ -65,7 +65,7 @@
 
 ## 📈 Key Metrics
 
-- **Lessons authored**: 14/40 (Phases 1-2 complete)
+- **Lessons authored**: 40/40 (all 5 phases complete)
 - **Days I've studied**: 0/40  ← update as you go
 - **Exercises I've run**: 0/40
 - **Phase assessments passed**: 0/5 (see `assessments/`)

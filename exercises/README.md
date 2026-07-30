@@ -8,14 +8,18 @@ and read the generated sample tables via `read_table(spark, "transactions")`.
 
 ```
 exercises/
-├── fundamentals/          # Days 1-7   (Phase 1)   ✅
-├── performance-tuning/    # Days 8-14  (Phase 2)   ✅
+├── fundamentals/          # exercise-00 (bonus intro) + Days 1-7   (Phase 1)
+├── performance-tuning/    # Days 8-14  (Phase 2)
 ├── troubleshooting/       # Days 15-21 (Phase 3)
 ├── advanced/              # Days 22-28 (Phase 4)
 ├── streaming/             # Days 30-31 (Phase 5)
 ├── production/            # Days 29, 32-40 (Phase 5)
 └── solutions/             # Worked solutions + expected observations
 ```
+
+`fundamentals/exercise-00-simple-spark-app.py` is a bonus, ungraded "hello world" DataFrame
+script with no day mapping — run it first if you want to sanity-check your environment before
+starting Day 1's `exercise-01-dag-analysis.py`.
 
 ## 🚀 How to Use
 

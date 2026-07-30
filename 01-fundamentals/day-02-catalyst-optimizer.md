@@ -226,7 +226,7 @@ spark.conf.set("spark.sql.optimizer.predicatePushdown.enabled", "false")
 # 3. Run same query and compare plans
 ```
 
-## 📊 Monitoring Optimization
+## 📊 Monitoring & Analysis
 
 ### Key Metrics
 - **Query compilation time**: Time to build plan
@@ -273,6 +273,12 @@ spark.conf.set("spark.sql.optimizer.predicatePushdown.enabled", "false")
 - **Day 3**: Memory Management and Garbage Collection
 - Practice: Analyze query plans for your common queries
 - Experiment: Enable/disable optimizations and measure impact
+
+## 📚 Additional Resources
+
+- [Catalyst Optimizer Deep Dive](https://databricks.com/glossary/catalyst-optimizer)
+- [Spark SQL Performance Tuning](https://spark.apache.org/docs/latest/sql-performance-tuning.html)
+- [Cost-Based Optimization in Spark SQL](https://spark.apache.org/docs/latest/cost-based-optimization.html)
 
 ---
 

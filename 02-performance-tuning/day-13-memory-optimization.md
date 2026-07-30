@@ -191,11 +191,6 @@ spark.conf.set("spark.memory.storageFraction", "0.2")
 spark.conf.set("spark.executor.memory", "16g")
 ```
 
-**Monitor Spills:**
-- Check Spark UI for spill metrics
-- Look for "Spill (Memory)" and "Spill (Disk)"
-- High spills indicate memory pressure
-
 ### 2. Memory Overhead Tuning
 
 **Configuration:**
@@ -225,19 +220,57 @@ spark.conf.set("spark.driver.maxResultSize", "2g")
 spark.conf.set("spark.driver.memory", "8g")
 ```
 
-### 4. Memory Monitoring
+## 💡 Key Insights for On-Premise
 
-**Key Metrics:**
-- Executor memory usage
-- Storage memory usage
-- GC time and frequency
-- Spill metrics
-- Cache hit/miss rates
+### 1. Memory Configuration Template
 
-**Tools:**
-- Spark UI (Executors, Storage tabs)
-- GC logs
-- Cluster monitoring tools
+**For ETL Workloads:**
+```python
+spark.conf.set("spark.executor.memory", "14g")
+spark.conf.set("spark.executor.memoryOverhead", "2g")
+spark.conf.set("spark.memory.fraction", "0.8")
+spark.conf.set("spark.memory.storageFraction", "0.6")  # More for caching
+```
+
+**For Analytical Workloads:**
+```python
+spark.conf.set("spark.executor.memory", "16g")
+spark.conf.set("spark.executor.memoryOverhead", "2g")
+spark.conf.set("spark.memory.fraction", "0.8")
+spark.conf.set("spark.memory.storageFraction", "0.3")  # More for execution
+```
+
+**For Streaming:**
+```python
+spark.conf.set("spark.executor.memory", "8g")
+spark.conf.set("spark.executor.memoryOverhead", "1g")
+spark.conf.set("spark.memory.fraction", "0.6")
+spark.conf.set("spark.memory.storageFraction", "0.5")
+```
+
+### 2. Memory Troubleshooting Workflow
+
+**Step 1: Identify Issue**
+- OOM errors?
+- Frequent spills?
+- Long GC pauses?
+- High memory usage?
+
+**Step 2: Analyze**
+- Check Spark UI metrics
+- Review GC logs
+- Analyze memory usage patterns
+
+**Step 3: Optimize**
+- Adjust memory configuration
+- Optimize code
+- Right-size executors
+- Tune GC
+
+**Step 4: Validate**
+- Run representative workload
+- Measure improvements
+- Monitor for 24-48 hours
 
 ## 🎯 Practical Exercises
 
@@ -304,72 +337,20 @@ df.count()
 # 4. Analyze memory patterns
 ```
 
-## 💡 Best Practices for On-Premise
+## 📊 Monitoring & Analysis
 
-### 1. Memory Configuration Template
+### Key Metrics to Monitor
 
-**For ETL Workloads:**
-```python
-spark.conf.set("spark.executor.memory", "14g")
-spark.conf.set("spark.executor.memoryOverhead", "2g")
-spark.conf.set("spark.memory.fraction", "0.8")
-spark.conf.set("spark.memory.storageFraction", "0.6")  # More for caching
-```
+1. **Executor memory usage**: Average memory used per executor vs `spark.executor.memory` allocated
+2. **GC time and frequency**: GC time as a percentage of total task time — rising values signal memory pressure
+3. **Spill metrics**: "Spill (Memory)" and "Spill (Disk)" bytes; frequent spills mean insufficient execution memory
+4. **Cache hit/miss rate and OOM frequency**: Low cache effectiveness or recurring OOM errors both call for a memory review
 
-**For Analytical Workloads:**
-```python
-spark.conf.set("spark.executor.memory", "16g")
-spark.conf.set("spark.executor.memoryOverhead", "2g")
-spark.conf.set("spark.memory.fraction", "0.8")
-spark.conf.set("spark.memory.storageFraction", "0.3")  # More for execution
-```
+### Spark UI Analysis
 
-**For Streaming:**
-```python
-spark.conf.set("spark.executor.memory", "8g")
-spark.conf.set("spark.executor.memoryOverhead", "1g")
-spark.conf.set("spark.memory.fraction", "0.6")
-spark.conf.set("spark.memory.storageFraction", "0.5")
-```
-
-### 2. Regular Memory Health Checks
-
-**Weekly Review:**
-- Average memory usage per executor
-- GC time as % of total time
-- Spill frequency
-- Cache effectiveness
-- OOM error frequency
-
-**Optimization:**
-- Adjust memory fractions based on workload
-- Right-size executors
-- Optimize GC settings
-- Improve code to reduce memory usage
-
-### 3. Memory Troubleshooting Workflow
-
-**Step 1: Identify Issue**
-- OOM errors?
-- Frequent spills?
-- Long GC pauses?
-- High memory usage?
-
-**Step 2: Analyze**
-- Check Spark UI metrics
-- Review GC logs
-- Analyze memory usage patterns
-
-**Step 3: Optimize**
-- Adjust memory configuration
-- Optimize code
-- Right-size executors
-- Tune GC
-
-**Step 4: Validate**
-- Run representative workload
-- Measure improvements
-- Monitor for 24-48 hours
+- **Storage tab**: Check memory used for cached data, disk usage if data spilled, and which RDDs/DataFrames are cached
+- **Executors tab**: Compare memory used vs total per executor, peak memory usage, and GC time per executor
+- **GC logs**: Cross-reference `-XX:+PrintGCDetails` output (pause count and duration) whenever the UI shows elevated GC time
 
 ## 🚨 Common Issues & Solutions
 

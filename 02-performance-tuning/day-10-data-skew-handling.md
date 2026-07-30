@@ -76,24 +76,7 @@ print(f"Skew ratio: {max(partition_sizes) / min(partition_sizes):.2f}")
 
 ## 🔍 Deep Dive: Skew Detection Techniques
 
-### 1. Spark UI Analysis
-
-**Stages Tab:**
-- Look for tasks with much longer execution time
-- Check shuffle read size distribution
-- Identify tasks with high input size
-
-**Tasks Tab:**
-- Sort by duration (descending)
-- Check if top tasks are much slower
-- Look at shuffle read metrics
-
-**SQL Tab:**
-- View query plan
-- Check for skew indicators
-- Look at stage metrics
-
-### 2. Programmatic Detection
+### 1. Programmatic Detection
 
 **Partition Size Analysis:**
 ```python
@@ -283,6 +266,58 @@ df = df.withColumn(
 df.repartition(1000, "partition_key")
 ```
 
+## 💡 Key Insights for On-Premise
+
+### 1. Proactive Skew Detection
+
+**Regular Monitoring:**
+- Weekly analysis of job performance
+- Check for straggler tasks
+- Monitor key distributions
+
+**Prevention:**
+- Choose balanced partition keys
+- Monitor data distribution
+- Set up alerts for skew
+
+### 2. Skew Handling Strategy
+
+**For Known Skew:**
+- Use salting for specific keys
+- Split skewed keys separately
+- Pre-process to balance data
+
+**For Unknown Skew:**
+- Enable AQE (Spark 3.0+)
+- Monitor and adjust
+- Use adaptive techniques
+
+### 3. Salting Best Practices
+
+**Choose Salt Buckets:**
+- Too few: Still skewed
+- Too many: Overhead
+- Sweet spot: 10-100 typically
+
+**Test and Iterate:**
+- Start with 10 buckets
+- Measure improvement
+- Adjust based on results
+
+### 4. Combine Techniques
+
+**Multi-Layer Approach:**
+```python
+# 1. Enable AQE (automatic)
+spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+
+# 2. Use salting for known extreme skew
+df_salted = add_salt(df, skewed_keys)
+
+# 3. Increase partitions
+df.repartition(1000, "salted_key")
+```
+
 ## 🎯 Practical Exercises
 
 ### Exercise 1: Detect Skew
@@ -345,57 +380,31 @@ df1.join(df2, "key")
 #    - Compare task execution times
 ```
 
-## 💡 Best Practices for On-Premise
+## 📊 Monitoring & Analysis
 
-### 1. Proactive Skew Detection
+### Key Metrics to Monitor
 
-**Regular Monitoring:**
-- Weekly analysis of job performance
-- Check for straggler tasks
-- Monitor key distributions
+1. **Partition size ratio (max/min)**: Ratio above 3-5x, as computed by `detect_skew()`, indicates likely skew
+2. **Task duration distribution**: Straggler tasks running far longer than the median task in a stage
+3. **Shuffle read size per task**: A handful of tasks reading disproportionately more shuffle data than the rest
+4. **Top-key percentage of total rows**: A single key holding a large share of the dataset signals join/groupBy skew
 
-**Prevention:**
-- Choose balanced partition keys
-- Monitor data distribution
-- Set up alerts for skew
+### Spark UI Analysis
 
-### 2. Skew Handling Strategy
+**Stages Tab:**
+- Look for tasks with much longer execution time
+- Check shuffle read size distribution
+- Identify tasks with high input size
 
-**For Known Skew:**
-- Use salting for specific keys
-- Split skewed keys separately
-- Pre-process to balance data
+**Tasks Tab:**
+- Sort by duration (descending)
+- Check if top tasks are much slower
+- Look at shuffle read metrics
 
-**For Unknown Skew:**
-- Enable AQE (Spark 3.0+)
-- Monitor and adjust
-- Use adaptive techniques
-
-### 3. Salting Best Practices
-
-**Choose Salt Buckets:**
-- Too few: Still skewed
-- Too many: Overhead
-- Sweet spot: 10-100 typically
-
-**Test and Iterate:**
-- Start with 10 buckets
-- Measure improvement
-- Adjust based on results
-
-### 4. Combine Techniques
-
-**Multi-Layer Approach:**
-```python
-# 1. Enable AQE (automatic)
-spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
-
-# 2. Use salting for known extreme skew
-df_salted = add_salt(df, skewed_keys)
-
-# 3. Increase partitions
-df.repartition(1000, "salted_key")
-```
+**SQL Tab:**
+- View query plan
+- Check for skew indicators (e.g. `CustomShuffleReader` with skew join optimization applied)
+- Look at stage metrics
 
 ## 🚨 Common Issues & Solutions
 
