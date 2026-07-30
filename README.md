@@ -24,14 +24,20 @@ By the end of this journey, you will be able to:
 ## 🚀 Getting Started (5 minutes)
 
 ```bash
-# 1. Install
-pip install -r environment/requirements.txt
-# 2. Stand up the local minikube cluster (Spark Operator + MinIO + History Server)
+# 1. Stand up the local minikube cluster (Spark Operator + MinIO + History Server)
+#    setup.sh builds the Dockerfile image, which already pip installs
+#    environment/requirements.txt for you -- nothing to install locally.
 bash environment/setup.sh
-# 3. Generate laptop-friendly sample data (~1M rows) -- see environment/README.md
-# 4. Run Day 1's exercise and open http://localhost:4040
+# 2. Generate laptop-friendly sample data (~1M rows) -- see environment/README.md
+# 3. Run Day 1's exercise and open http://localhost:4040
 kubectl apply -f environment/k8s/05-example-sparkapplication.yaml
 ```
+
+> `environment/requirements.txt` only matters if you want optional **local** tooling —
+> inspecting Parquet output with pandas, running lessons as local Jupyter notebooks, or
+> running the Kafka producer on your laptop instead of as a pod. It's not needed to
+> follow the k8s path above; run `pip install -r environment/requirements.txt` yourself
+> only if you want one of those.
 
 Prefer a real cluster feel? Use the [minikube Kubernetes cluster](environment/README.md)
 (Spark Operator + MinIO/S3 + History Server — real driver/executor pods). Then read
