@@ -1,10 +1,13 @@
 import os
 import sys
+from datetime import datetime
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from common.spark_session import get_spark
 
 from pyspark.sql.functions import col, sum as spark_sum, count
+
+start_time = datetime.now()
 
 spark = get_spark("Simple Spark Application")
 
@@ -31,6 +34,10 @@ print("Aggregated DataFrame")
 aggregated_df.show()
 
 aggregated_df.explain(True)
+
+end_time = datetime.now()
+print("Spark SQL Execution Time: ", (end_time - start_time).total_seconds())
+print("=" * 30)
 print("=" * 30)
 print("FINISHED")
 

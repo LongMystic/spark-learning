@@ -1,0 +1,19 @@
+# PersistentVolumeClaim for Spark application code.
+# Code is synced into this volume via `kubectl cp` (see environment/sync-code.sh).
+# Both Spark driver and executor pods mount this PVC to read Python scripts.
+#
+# Access mode: ReadWriteOnce is sufficient for single-node clusters.
+# For multi-node clusters where driver and executors land on different nodes,
+# switch to ReadWriteMany and use a storage class that supports it
+# (e.g. NFS, AWS EFS, Azure Files, GCP Filestore).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: spark-code-pvc
+  namespace: spark-jobs
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Mi

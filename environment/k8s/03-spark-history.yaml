@@ -32,7 +32,7 @@ spec:
               mountPath: /extra-jars
       containers:
         - name: spark-history
-          image: spark:3.5.1
+          image: longmystic/spark:3.5.1
           command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.history.HistoryServer"]
           envFrom:
             - secretRef: { name: minio-creds }   # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY

@@ -1,10 +1,13 @@
 # Example SparkApplication (Spark Operator CRD) — the declarative way to run a job,
 # used in the production/orchestration lessons (Days 29, 35-40).
 # Apply with:  kubectl apply -f environment/k8s/05-example-sparkapplication.yaml
-# Watch with:  kubectl -n spark-jobs get sparkapplication example-dag-analysis -w
+# Watch with:  kubectl -n spark-jobs get sparkapplication simple-spark-app -w
 #
 # This is the K8S analog of `spark-submit --master yarn --deploy-mode cluster app.py`,
 # except the job is a Kubernetes object you can version, template, and let Airflow apply.
+#
+# Code lives in a PersistentVolume (spark-code-pvc), synced via:
+#   bash environment/sync-code.sh
 apiVersion: sparkoperator.k8s.io/v1beta2
 kind: SparkApplication
 metadata:
@@ -14,19 +17,17 @@ spec:
   type: Python
   pythonVersion: "3"
   mode: cluster
-  image: spark:3.5.1                 # image with your code baked in (or mounted)
+  image: longmystic/spark:3.5.1
   imagePullPolicy: IfNotPresent
   mainApplicationFile: local:///opt/spark-apps/exercises/fundamentals/exercise-00-simple-spark-app.py
   sparkVersion: "3.5.1"
   restartPolicy: { type: Never }
-  # Code is injected via ConfigMaps (see prerequisites above)
+  # Code is stored in a PersistentVolume, synced from host via kubectl cp.
+  # See environment/sync-code.sh.
   volumes:
-    - name: code-dag-analysis
-      configMap:
-        name: spark-code-dag-analysis
-    - name: code-common
-      configMap:
-        name: spark-code-common
+    - name: spark-code
+      persistentVolumeClaim:
+        claimName: spark-code-pvc
   driver:
     cores: 1
     memory: 2g
@@ -37,10 +38,8 @@ spec:
     envFrom:
       - secretRef: { name: minio-creds }
     volumeMounts:
-      - name: code-dag-analysis
-        mountPath: /opt/spark-apps/exercises/fundamentals
-      - name: code-common
-        mountPath: /opt/spark-apps/common
+      - name: spark-code
+        mountPath: /opt/spark-apps
   executor:
     cores: 1
     instances: 1
@@ -51,10 +50,8 @@ spec:
     envFrom:
       - secretRef: { name: minio-creds }
     volumeMounts:
-      - name: code-dag-analysis
-        mountPath: /opt/spark-apps/exercises/fundamentals
-      - name: code-common
-        mountPath: /opt/spark-apps/common
+      - name: spark-code
+        mountPath: /opt/spark-apps
   sparkConf:
     # hadoop-aws + aws-java-sdk-bundle are not in apache/spark:3.5.1 — pull at runtime.
     "spark.jars.packages": "org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262"

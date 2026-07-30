@@ -68,6 +68,7 @@ Comprehensive production patterns for enterprise Spark deployments on on-premise
 - [Day 35: Airflow Orchestration Integration](day-35-airflow-orchestration.md)
 - [Day 36: DBT-on-Spark Integration](day-36-dbt-integration.md)
 - [Day 37: Superset Query Optimization](day-37-superset-optimization.md)
+- [Production Pattern: Code Deployment Strategies](production-code-deployment.md)
 - [Day 38: Large-Scale ETL & CDC](../05-real-world-scenarios/day-38-large-scale-etl.md) (in `05-real-world-scenarios/`)
 - [Day 39: Architecture, Multi-Tenancy, HA & Security](day-39-architecture-patterns.md)
 - [Day 40: Cost/Observability + Capstone Kickoff](day-40-cost-observability.md)
