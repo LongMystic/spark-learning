@@ -29,7 +29,7 @@ By the end of this journey, you will be able to:
 #    environment/requirements.txt for you -- nothing to install locally.
 bash environment/setup.sh
 # 2. Generate laptop-friendly sample data (~1M rows) -- see environment/README.md
-# 3. Run Day 1's exercise and open http://localhost:4040
+# 3. Run simple pyspark code and open http://localhost:4040
 kubectl apply -f environment/k8s/05-example-sparkapplication.yaml
 ```
 
